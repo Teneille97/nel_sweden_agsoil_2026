@@ -100,7 +100,7 @@ mc=function(pars){
 
 inipars=c(0.5,0.001,0.01, 0.1, 0.9) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
 
-yr <- as.numeric(seq(1957,2019))
+yr <- as.numeric(seq(1957,2019, by = 1/12))
 
 ### Run model
 
@@ -122,9 +122,9 @@ mod_F14C_MF2_bulk=data.frame(Year = yr,
                          "Delta14C_bulk" = getF14C(bestModel_M2)) # Delta14C for bulk
 mod_C_MF2_pools=data.frame(Year = yr,
                        "C_fast" = getC(bestModel_M2)[,1],
-                       "C_fast" = getC(bestModel_M2)[,2]) # C for both pools
+                       "C_slow" = getC(bestModel_M2)[,2]) # C for both pools
 mod_C_MF2_bulk=data.frame(Year = yr, 
-                      "C_bulk" = rowSums(C_MF2_pools)) # C for bulk
+                      "C_bulk" = rowSums(getC(bestModel_M2))) # C for bulk
 
 
 # plot modeled vs observed
@@ -132,16 +132,38 @@ Delta14Clabel<-expression(Delta^14*C)
 stocks_label <- expression(C ~ (g ~ m^{-2}))
 
 ## C stocks plot
+y_min_C <- min(mod_C_MF2_bulk$C_bulk, mod_C_MF2_pools$C_fast, mod_C_MF2_pools$C_slow, na.rm = TRUE)
+y_max_C <- max(mod_C_MF2_bulk$C_bulk, mod_C_MF2_pools$C_fast, mod_C_MF2_pools$C_slow, na.rm = TRUE)
+
 par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
-plot(mod_C_MF2_bulk$Year, mod_C_MF2_bulk$C_bulk,
+plot(mod_C_MF2_bulk$Year, mod_C_MF2_bulk$C_bulk, #mod bulk C 
      type = "l", lwd = 2,
      xlab = "Year", ylab = stocks_label,
-     main = "Modeled vs Observed C stocks")
-# Add observed points 
-points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct,
+     main = "Modeled vs Observed C stocks",
+     ylim = c(y_min_C, y_max_C))
+lines(mod_C_MF2_pools$Year, mod_C_MF2_pools$C_fast, #mod fast pool C 
+      col = "blue", lty = 2, lwd = 1.5)
+lines(mod_C_MF2_pools$Year, mod_C_MF2_pools$C_slow, #mod slow pool C 
+      col = "darkgreen", lty = 2, lwd = 1.5)
+points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct, #observed bulk C points
        pch = 16, col = "red")
 
-##Delta14C plot - continue here
+##Delta14C plot
+y_min <- min(mod_F14C_MF2_pools$Delta14C_slow, M2_C14obs_bulk$C14t, na.rm = TRUE)
+y_max <- max(mod_F14C_MF2_pools$Delta14C_fast, na.rm = TRUE)
+
+par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
+plot(mod_F14C_MF2_bulk$Year, mod_F14C_MF2_bulk$Delta14C_bulk, #mod bulk C 
+     type = "l", lwd = 2,
+     xlab = "Year", ylab = Delta14Clabel,
+     main = "Modeled vs Observed Delta14C",
+     ylim = c(y_min, y_max))
+lines(mod_F14C_MF2_pools$Year, mod_F14C_MF2_pools$Delta14C_fast, #mod fast pool 14C
+      col = "blue", lty = 2, lwd = 1.5)
+lines(mod_F14C_MF2_pools$Year, mod_F14C_MF2_pools$Delta14C_slow, #mod slow pool 14C 
+      col = "darkgreen", lty = 2, lwd = 1.5)
+points(M2_C14obs_bulk$Year, M2_C14obs_bulk$C14t, #observed bulk 14C points
+       pch = 16, col = "red")
 
 ### MCMC optimization
 var0_M2 <- mFit_M2$var_ms_unweighted
