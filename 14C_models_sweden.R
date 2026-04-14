@@ -1,0 +1,165 @@
+#SOM decomposition models for agricultural soils at four sites in Sweden
+
+## load libraries
+library(here)
+library(SoilR)
+library(FME)
+library(ggplot2)
+library(dplyr)
+
+## import data
+all_data=read.csv2(here("csv_files", "LTEnitrogen2.csv"))
+
+all_data <- all_data %>%
+  mutate(across(c("Year", "TONgkg", "Cgkg", "MolarCN", "F14C", "err", "d14C"), as.numeric)) %>%
+  mutate(across(c("LTE", "Teatment", "Temperature...C."), as.factor)) 
+
+## data subsets by sites
+M2_df=subset(all_data,all_data$LTE=="M2-1957")
+M4_df=subset(all_data,all_data$LTE=="M4-1957")
+M6_df=subset(all_data,all_data$LTE=="M6-1957")
+R94_df=subset(all_data,all_data$LTE=="R94-1966")
+
+## C stocks
+# Calculate C stocks (g m-2) = C content (g kg-1) x BD (g cm-3) x depth (0.2 m) x 1000
+M2_df$C_stocks_gm2<-M2_df$Cgkg*1.51*0.2*1000 #BD = 1.51
+M4_df$C_stocks_gm2<-M4_df$Cgkg*1.72*0.2*1000 #BD = 1.72
+M6_df$C_stocks_gm2<-M6_df$Cgkg*1.44*0.2*1000 #BD = 1.44
+R94_df$C_stocks_gm2<-R94_df$Cgkg*1.37*0.2*1000 #BD = 1.37
+
+## Inputs
+# Constant inputs (kg C m-2) from Bolinder et al. 2012, doi: 10.4141/cjss2012-036 Table 4
+BolinderIn<-c(0.277,0.268,0.304,0.271,0.269,0.29, # Rotation A
+              0.259, 0.291, 0.296, 0.288, 0.265, 0.256) # Rotation B
+
+mean_C_inputs<-mean(BolinderIn)*1000 #transform to a single mean input in g m-2
+
+## Atmospheric radiocarbon
+Atm14C=Hua2021$NHZone1[,1:2]
+fAtm14C=read.csv(here("csv_files", "NHZ1forecast.csv")) #forecast only if later than 2019
+Atm14C<-rbind(Atm14C, data.frame(Year=fAtm14C$time, mean.Delta14C=Delta14C_from_AbsoluteFractionModern(fAtm14C$F14C)))
+
+
+## Models: Site M2
+
+### Obs dfs for each SOM thermal pool
+M2_bulk=subset(M2_df,M2_df$Temperature...C.=="Soil")
+M2_Cobs_bulk <- data.frame(Year = M2_bulk$Year, Ct = M2_bulk$C_stocks_gm2)
+M2_C14obs_bulk <- data.frame(Year = M2_bulk$Year, C14t = M2_bulk$d14C)
+
+M2_325=subset(M2_df,M2_df$Temperature...C.=="325")
+M2_Cobs_325 <- data.frame(Year = M2_325$Year, Ct = M2_325$C_stocks_gm2)
+M2_C14obs_325 <- data.frame(Year = M2_325$Year, C14t = M2_325$d14C)
+
+M2_400=subset(M2_df,M2_df$Temperature...C.=="400")
+M2_Cobs_400 <- data.frame(Year = M2_400$Year, Ct = M2_400$C_stocks_gm2)
+M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t = M2_400$d14C)
+
+### Initial C & Delta14C
+C0_M2_bulk<-M2_Cobs_bulk[1,2]
+F0_M2_bulk<-M2_C14obs_bulk[1,2]
+F0_M2_400<-M2_C14obs_400[1,2]
+
+### Define function to run a two-pool series model
+#pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
+
+mf=function(pars){
+  md=TwopSeriesModel14(t=yr,ks=pars[1:2],C0=C0_M2_bulk*c(pars[4], 1-pars[4]), #par[4] allocates a portion of initial bulk C to fast pool
+                       F0_Delta14C = c(F0_M2_bulk * pars[5], F0_M2_400), #par[5] allocates a portion of initial Delta14C of bulk to fast pool 
+                       #and initial D14C of slow pool is assigned that of thermal pool 400
+                       In=mean_C_inputs, #constant input scalar 
+                       a21=pars[1]*pars[3], inputFc = Atm14C) #where pars[1] = kf and pars[3] = alpha sf
+  Ct_pools = getC(md) # matrix with 2 columns for fast and slow pool
+  C14t = getF14C(md) #bulk 14C    
+  return(data.frame(
+    Year = yr,
+    Ct = rowSums(Ct_pools), # Total C
+    C14t = C14t,     
+    C_pool1 = Ct_pools[,1],    
+    C_pool2 = Ct_pools[,2]     
+  ))
+}
+
+### Define function to add obs datasets to cost function
+
+mc=function(pars){ 
+  out=mf(pars) #out = df of Year, Ct and C14t from mf output 
+  Cost1 = modCost(model = out, obs = M2_Cobs_bulk,
+                  x = "Year")
+  Cost2 = modCost(model = out, obs = M2_C14obs_bulk,
+                  x = "Year", cost = Cost1)
+  Cost3 = modCost(model = out, obs = M2_Cobs_325,
+                  x = "Year", cost = Cost2)
+  Cost4 = modCost(model = out, obs = M2_C14obs_325,
+                  x = "Year", cost = Cost3)
+  Cost5 = modCost(model = out, obs = M2_Cobs_400,
+                  x = "Year", cost = Cost4)
+  return(modCost(model = out, obs = M2_C14obs_400,
+                 x = "Year", cost = Cost5))
+} 
+
+inipars=c(0.5,0.001,0.01, 0.1, 0.9) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
+
+yr <- as.numeric(seq(1957,2019))
+
+### Run model
+
+## Uncomment the following to run again
+# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(1,0.5,1,1,1),lower=c(0,0,00,0,0))
+# bestpars_M2=mFit_M2$par
+# save(bestpars_M2, file="bestpars_M2.RData")
+## Otherwise load previous results
+# load("bestpars.RData")
+bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
+                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
+                  In=mean_C_inputs, 
+                  a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
+
+mod_F14C_MF2_pools=data.frame(Year = yr, 
+                          "Delta14C_fast"=getF14(bestModel_M2)[,1], 
+                          "Delta14C_slow" =getF14(bestModel_M2)[,2]) # Delta14C for both pools
+mod_F14C_MF2_bulk=data.frame(Year = yr, 
+                         "Delta14C_bulk" = getF14C(bestModel_M2)) # Delta14C for bulk
+mod_C_MF2_pools=data.frame(Year = yr,
+                       "C_fast" = getC(bestModel_M2)[,1],
+                       "C_fast" = getC(bestModel_M2)[,2]) # C for both pools
+mod_C_MF2_bulk=data.frame(Year = yr, 
+                      "C_bulk" = rowSums(C_MF2_pools)) # C for bulk
+
+
+# plot modeled vs observed
+Delta14Clabel<-expression(Delta^14*C)
+stocks_label <- expression(C ~ (g ~ m^{-2}))
+
+## C stocks plot
+par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
+plot(mod_C_MF2_bulk$Year, mod_C_MF2_bulk$C_bulk,
+     type = "l", lwd = 2,
+     xlab = "Year", ylab = stocks_label,
+     main = "Modeled vs Observed C stocks")
+# Add observed points 
+points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct,
+       pch = 16, col = "red")
+
+##Delta14C plot - continue here
+
+### MCMC optimization
+var0_M2 <- mFit_M2$var_ms_unweighted
+cov0_M2 <- summary(mFit_M2)$cov.scaled # The covariance matrix can be used for the jump 
+# uncomment to run again 
+# MCMC_M2 <- modMCMC(f=mc, p = bestpars_M2, niter = 2500, jump = NULL, var0 = var0, wvar0 = 1) #tnel: jump default is 10% of par value; what is wvar and why is it zero?
+# save(MCMC_M2, file="MCMC_M2.RData")
+# alternatively load saved run
+# load("MCMC_M2.RData")
+parsMCMC_M2<-summary(MCMC_M2)
+# uncomment to map uncertainties of predicted Ct and C14t
+# sR_M2=sensRange(func=mf, parInput=MCMC_M2$par) 
+# save(sR_M2, file="sR_M2.RData") 
+# alternatively, load saved run
+# load("sR_M2.RData")
+summarysR_M2<-summary(sR_M2) # mean is the Ct (g m-2) predicted
+nx_M2<-attributes(summarysR_M2)$nx
+C14tR_M2<-as.data.frame(summarysR_M2[(nx_M2+1):(2*nx_M2),]) #mean is the Delta_C14t (per mille) predicted
+
+
+pairs(MCMC,nsample=500) #check inter-dependence of parameters using 500 MCMC runs;
