@@ -54,16 +54,17 @@ M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t_slow = M2_400$d14C)
 M2_Cobs_fast <- data.frame(Year = M2_400$Year, Ct_fast = M2_bulk$C_stocks_gm2-M2_400$C_stocks_gm2)
 
 ### Initial C & Delta14C
-C0_M2_bulk<-M2_Cobs_bulk[1,2]
+C0_M2_400<-M2_Cobs_400[1,2]
+C0_M2_fast<-M2_Cobs_fast[1,2]
 F0_M2_bulk<-M2_C14obs_bulk[1,2]
 F0_M2_400<-M2_C14obs_400[1,2]
 
 ### Define function to run a two-pool series model
-#pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
+#pars[1:4] = kf, ks, alpha sf, F0fb
 
 mf=function(pars){
-  md=TwopSeriesModel14(t=yr,ks=pars[1:2],C0=C0_M2_bulk*c(pars[4], 1-pars[4]), #par[4] allocates a portion of initial bulk C to fast pool
-                       F0_Delta14C = c(F0_M2_bulk * pars[5], F0_M2_400), #par[5] allocates a portion of initial Delta14C of bulk to fast pool 
+  md=TwopSeriesModel14(t=yr,ks=pars[1:2],C0=c(C0_M2_fast, C0_M2_400), 
+                       F0_Delta14C = c(F0_M2_bulk * pars[4], F0_M2_400), #par[4] allocates a portion of initial Delta14C of bulk to fast pool 
                        #and initial D14C of slow pool is assigned that of thermal pool 400
                        In=mean_C_inputs, #constant input scalar 
                        a21=pars[1]*pars[3], inputFc = Atm14C) #where pars[1] = kf and pars[3] = alpha sf
@@ -97,20 +98,20 @@ mc=function(pars){
                  x = "Year", cost = Cost4))
 } 
 
-inipars=c(0.5,0.001,0.01, 0.1, 0.9) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
+inipars=c(0.5,0.001,0.01, 0.9) #pars[1:4] = kf, ks, alpha sf, F0fb
 
 yr <- as.numeric(seq(1957,2019, by = 1/12))
 
 ### Run model
 
 ## Uncomment the following to run again
-# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(1,0.5,1,1,1),lower=c(0,0,0,0,0))
+# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(1,0.5,1,1),lower=c(0,0,0,0))
 # bestpars_M2=mFit_M2$par
 # save(bestpars_M2, file="bestpars_M2.RData")
 ## Otherwise load previous results
 # load("bestpars.RData")
-bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
-                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
+bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=c(C0_M2_fast, C0_M2_400), 
+                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[4], F0_M2_400),
                   In=mean_C_inputs, 
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
@@ -131,9 +132,9 @@ Delta14Clabel<-expression(Delta^14*C)
 stocks_label <- expression(C ~ (g ~ m^{-2}))
 
 ## C stocks plot
-y_min_C <- min(M2_Cobs_bulk$Ct, M2_Cobs_325$Ct_fast, M2_Cobs_400$Ct_slow, 
+y_min_C <- min(M2_Cobs_bulk$Ct, M2_Cobs_fast$Ct_fast, M2_Cobs_400$Ct_slow, 
                mod_Ct_MF2_bulk$Ct_bulk, mod_Ct_MF2_pools$Ct_fast, mod_Ct_MF2_pools$Ct_slow, na.rm = TRUE)
-y_max_C <- max(M2_Cobs_bulk$Ct, M2_Cobs_325$Ct_fast, M2_Cobs_400$Ct_slow, 
+y_max_C <- max(M2_Cobs_bulk$Ct, M2_Cobs_fast$Ct_fast, M2_Cobs_400$Ct_slow, 
                mod_Ct_MF2_bulk$Ct_bulk, mod_Ct_MF2_pools$Ct_fast, mod_Ct_MF2_pools$Ct_slow, na.rm = TRUE)
 
 par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
@@ -148,6 +149,8 @@ lines(mod_Ct_MF2_pools$Year, mod_Ct_MF2_pools$Ct_slow, #mod slow pool C
       col = "darkgreen", lty = 1, lwd = 2)
 points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct, #observed bulk C points
        pch = 16, col = "black")
+points(M2_Cobs_fast$Year, M2_Cobs_fast$Ct_fast, #observed fast pool C points
+       pch = 16, col = "blue")
 points(M2_Cobs_400$Year, M2_Cobs_400$Ct_slow, #observed slow pool C points
        pch = 16, col = "darkgreen")
 legend("topright", 
@@ -157,10 +160,9 @@ legend("topright",
        pch = c(NA, NA, NA, NA))
 
 ##Delta14C plot
-y_min_14C <- min(M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
+y_min_14C <- min(M2_C14obs_bulk$C14t, M2_C14obs_400$C14t_slow, 
                  mod_C14t_MF2_bulk$C14t, mod_C14t_MF2_pools$C14t_fast, mod_C14t_MF2_pools$C14t_slow, na.rm = TRUE)
-y_max_14C <- max(M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
-                 M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
+y_max_14C <- max(M2_C14obs_bulk$C14t, M2_C14obs_400$C14t_slow, 
                  mod_C14t_MF2_bulk$C14t, mod_C14t_MF2_pools$C14t_fast, mod_C14t_MF2_pools$C14t_slow, na.rm = TRUE)
 
 par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
