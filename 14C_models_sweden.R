@@ -47,13 +47,11 @@ M2_bulk=subset(M2_df,M2_df$Temperature...C.=="Soil")
 M2_Cobs_bulk <- data.frame(Year = M2_bulk$Year, Ct = M2_bulk$C_stocks_gm2)
 M2_C14obs_bulk <- data.frame(Year = M2_bulk$Year, C14t = M2_bulk$d14C)
 
-M2_325=subset(M2_df,M2_df$Temperature...C.=="325")
-M2_Cobs_325 <- data.frame(Year = M2_325$Year, Ct_fast = M2_325$C_stocks_gm2)
-M2_C14obs_325 <- data.frame(Year = M2_325$Year, C14t_fast = M2_325$d14C)
-
 M2_400=subset(M2_df,M2_df$Temperature...C.=="400")
 M2_Cobs_400 <- data.frame(Year = M2_400$Year, Ct_slow = M2_400$C_stocks_gm2)
 M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t_slow = M2_400$d14C)
+
+M2_Cobs_fast <- data.frame(Year = M2_400$Year, Ct_fast = M2_bulk$C_stocks_gm2-M2_400$C_stocks_gm2)
 
 ### Initial C & Delta14C
 C0_M2_bulk<-M2_Cobs_bulk[1,2]
@@ -91,14 +89,12 @@ mc=function(pars){
                   x = "Year")
   Cost2 = modCost(model = out, obs = M2_C14obs_bulk, # Delta14C bulk
                   x = "Year", cost = Cost1)
-  Cost3 = modCost(model = out, obs = M2_Cobs_325, # C fast pool
+  Cost3 = modCost(model = out, obs = M2_Cobs_400, # C slow pool
                   x = "Year", cost = Cost2)
-  Cost4 = modCost(model = out, obs = M2_C14obs_325, # Delta14C fast pool 
-                  x = "Year", cost = Cost3)
-  Cost5 = modCost(model = out, obs = M2_Cobs_400, # C fast pool
-                  x = "Year", cost = Cost4)
-  return(modCost(model = out, obs = M2_C14obs_400, # Delta 14C slow pool
-                 x = "Year", cost = Cost5))
+  Cost4 = modCost(model = out, obs = M2_C14obs_400, # Delta 14C slow pool
+                 x = "Year", cost = Cost3)
+  return(modCost(model = out, obs = M2_Cobs_fast, # C calculated fast pool
+                 x = "Year", cost = Cost4))
 } 
 
 inipars=c(0.5,0.001,0.01, 0.1, 0.9) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
@@ -108,7 +104,7 @@ yr <- as.numeric(seq(1957,2019, by = 1/12))
 ### Run model
 
 ## Uncomment the following to run again
-# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(1,0.5,1,1,1),lower=c(0,0,00,0,0))
+# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(1,0.5,1,1,1),lower=c(0,0,0,0,0))
 # bestpars_M2=mFit_M2$par
 # save(bestpars_M2, file="bestpars_M2.RData")
 ## Otherwise load previous results
@@ -152,8 +148,6 @@ lines(mod_Ct_MF2_pools$Year, mod_Ct_MF2_pools$Ct_slow, #mod slow pool C
       col = "darkgreen", lty = 1, lwd = 2)
 points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct, #observed bulk C points
        pch = 16, col = "black")
-points(M2_Cobs_325$Year, M2_Cobs_325$Ct_fast, #observed fast pool C points
-       pch = 16, col = "blue")
 points(M2_Cobs_400$Year, M2_Cobs_400$Ct_slow, #observed slow pool C points
        pch = 16, col = "darkgreen")
 legend("topright", 
@@ -183,8 +177,6 @@ lines(Atm14C$Year, Atm14C$mean.Delta14C, #atm 14C
       col = "purple", lty = 1, lwd = 2)
 points(M2_C14obs_bulk$Year, M2_C14obs_bulk$C14t, #observed bulk Delta14C points
        pch = 16, col = "black")
-points(M2_C14obs_325$Year, M2_C14obs_325$C14t_fast, #observed fast pool Delta14C points
-       pch = 16, col = "blue")
 points(M2_C14obs_400$Year, M2_C14obs_400$C14t_slow, #observed slow pool Delta14C points
        pch = 16, col = "darkgreen")
 legend("topright", 
