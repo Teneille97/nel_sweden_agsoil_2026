@@ -95,7 +95,7 @@ mc=function(pars){
                   x = "Year", cost = Cost2)
   Cost4 = modCost(model = out, obs = M2_C14obs_325, # Delta14C fast pool 
                   x = "Year", cost = Cost3)
-  Cost5 = modCost(model = out, obs = M2_Cobs_400, # C fast pool
+  Cost5 = modCost(model = out, obs = M2_Cobs_400, # C slow pool
                   x = "Year", cost = Cost4)
   return(modCost(model = out, obs = M2_C14obs_400, # Delta 14C slow pool
                  x = "Year", cost = Cost5))
