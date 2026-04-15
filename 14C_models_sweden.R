@@ -36,7 +36,7 @@ mean_C_inputs<-mean(BolinderIn)*1000 #transform to a single mean input in g m-2
 
 ## Atmospheric radiocarbon
 Atm14C=Hua2021$NHZone1[,1:2]
-fAtm14C=read.csv(here("csv_files", "NHZ1forecast.csv")) #forecast only if later than 2019
+fAtm14C=read.csv(here("csv_files", "NHZ1forecast.csv")) #forecast later than 2019
 Atm14C<-rbind(Atm14C, data.frame(Year=fAtm14C$time, mean.Delta14C=Delta14C_from_AbsoluteFractionModern(fAtm14C$F14C)))
 
 
@@ -48,12 +48,12 @@ M2_Cobs_bulk <- data.frame(Year = M2_bulk$Year, Ct = M2_bulk$C_stocks_gm2)
 M2_C14obs_bulk <- data.frame(Year = M2_bulk$Year, C14t = M2_bulk$d14C)
 
 M2_325=subset(M2_df,M2_df$Temperature...C.=="325")
-M2_Cobs_325 <- data.frame(Year = M2_325$Year, Ct = M2_325$C_stocks_gm2)
-M2_C14obs_325 <- data.frame(Year = M2_325$Year, C14t = M2_325$d14C)
+M2_Cobs_325 <- data.frame(Year = M2_325$Year, Ct_fast = M2_325$C_stocks_gm2)
+M2_C14obs_325 <- data.frame(Year = M2_325$Year, C14t_fast = M2_325$d14C)
 
 M2_400=subset(M2_df,M2_df$Temperature...C.=="400")
-M2_Cobs_400 <- data.frame(Year = M2_400$Year, Ct = M2_400$C_stocks_gm2)
-M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t = M2_400$d14C)
+M2_Cobs_400 <- data.frame(Year = M2_400$Year, Ct_slow = M2_400$C_stocks_gm2)
+M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t_slow = M2_400$d14C)
 
 ### Initial C & Delta14C
 C0_M2_bulk<-M2_Cobs_bulk[1,2]
@@ -69,14 +69,17 @@ mf=function(pars){
                        #and initial D14C of slow pool is assigned that of thermal pool 400
                        In=mean_C_inputs, #constant input scalar 
                        a21=pars[1]*pars[3], inputFc = Atm14C) #where pars[1] = kf and pars[3] = alpha sf
-  Ct_pools = getC(md) # matrix with 2 columns for fast and slow pool
+  Ct_pools = getC(md) # matrix with 2 columns for fast and slow pool C
+  C14_pools = getF14(md) # matrix with 2 columns for fast and slow pool Delta 14C
   C14t = getF14C(md) #bulk 14C    
   return(data.frame(
     Year = yr,
     Ct = rowSums(Ct_pools), # Total C
-    C14t = C14t,     
-    C_pool1 = Ct_pools[,1],    
-    C_pool2 = Ct_pools[,2]     
+    C14t = C14t, #Bulk Delta 14C     
+    Ct_fast = Ct_pools[,1],    
+    Ct_slow = Ct_pools[,2],
+    C14t_fast = C14_pools[,1],
+    C14t_slow = C14_pools[,2]
   ))
 }
 
@@ -84,17 +87,17 @@ mf=function(pars){
 
 mc=function(pars){ 
   out=mf(pars) #out = df of Year, Ct and C14t from mf output 
-  Cost1 = modCost(model = out, obs = M2_Cobs_bulk,
+  Cost1 = modCost(model = out, obs = M2_Cobs_bulk, # C bulk
                   x = "Year")
-  Cost2 = modCost(model = out, obs = M2_C14obs_bulk,
+  Cost2 = modCost(model = out, obs = M2_C14obs_bulk, # Delta14C bulk
                   x = "Year", cost = Cost1)
-  Cost3 = modCost(model = out, obs = M2_Cobs_325,
+  Cost3 = modCost(model = out, obs = M2_Cobs_325, # C fast pool
                   x = "Year", cost = Cost2)
-  Cost4 = modCost(model = out, obs = M2_C14obs_325,
+  Cost4 = modCost(model = out, obs = M2_C14obs_325, # Delta14C fast pool 
                   x = "Year", cost = Cost3)
-  Cost5 = modCost(model = out, obs = M2_Cobs_400,
+  Cost5 = modCost(model = out, obs = M2_Cobs_400, # C fast pool
                   x = "Year", cost = Cost4)
-  return(modCost(model = out, obs = M2_C14obs_400,
+  return(modCost(model = out, obs = M2_C14obs_400, # Delta 14C slow pool
                  x = "Year", cost = Cost5))
 } 
 
@@ -115,16 +118,16 @@ bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpar
                   In=mean_C_inputs, 
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
-mod_F14C_MF2_pools=data.frame(Year = yr, 
-                          "Delta14C_fast"=getF14(bestModel_M2)[,1], 
-                          "Delta14C_slow" =getF14(bestModel_M2)[,2]) # Delta14C for both pools
-mod_F14C_MF2_bulk=data.frame(Year = yr, 
-                         "Delta14C_bulk" = getF14C(bestModel_M2)) # Delta14C for bulk
-mod_C_MF2_pools=data.frame(Year = yr,
-                       "C_fast" = getC(bestModel_M2)[,1],
-                       "C_slow" = getC(bestModel_M2)[,2]) # C for both pools
-mod_C_MF2_bulk=data.frame(Year = yr, 
-                      "C_bulk" = rowSums(getC(bestModel_M2))) # C for bulk
+mod_C14t_MF2_pools=data.frame(Year = yr, 
+                          "C14t_fast"=getF14(bestModel_M2)[,1], 
+                          "C14t_slow" =getF14(bestModel_M2)[,2]) # Delta14C for both pools
+mod_C14t_MF2_bulk=data.frame(Year = yr, 
+                         "C14t" = getF14C(bestModel_M2)) # Delta14C for bulk
+mod_Ct_MF2_pools=data.frame(Year = yr,
+                       "Ct_fast" = getC(bestModel_M2)[,1],
+                       "Ct_slow" = getC(bestModel_M2)[,2]) # C for both pools
+mod_Ct_MF2_bulk=data.frame(Year = yr, 
+                      "Ct_bulk" = rowSums(getC(bestModel_M2))) # C for bulk
 
 
 # plot modeled vs observed
@@ -132,38 +135,63 @@ Delta14Clabel<-expression(Delta^14*C)
 stocks_label <- expression(C ~ (g ~ m^{-2}))
 
 ## C stocks plot
-y_min_C <- min(mod_C_MF2_bulk$C_bulk, mod_C_MF2_pools$C_fast, mod_C_MF2_pools$C_slow, na.rm = TRUE)
-y_max_C <- max(mod_C_MF2_bulk$C_bulk, mod_C_MF2_pools$C_fast, mod_C_MF2_pools$C_slow, na.rm = TRUE)
+y_min_C <- min(M2_Cobs_bulk$Ct, M2_Cobs_325$Ct_fast, M2_Cobs_400$Ct_slow, 
+               mod_Ct_MF2_bulk$Ct_bulk, mod_Ct_MF2_pools$Ct_fast, mod_Ct_MF2_pools$Ct_slow, na.rm = TRUE)
+y_max_C <- max(M2_Cobs_bulk$Ct, M2_Cobs_325$Ct_fast, M2_Cobs_400$Ct_slow, 
+               mod_Ct_MF2_bulk$Ct_bulk, mod_Ct_MF2_pools$Ct_fast, mod_Ct_MF2_pools$Ct_slow, na.rm = TRUE)
 
 par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
-plot(mod_C_MF2_bulk$Year, mod_C_MF2_bulk$C_bulk, #mod bulk C 
+plot(mod_Ct_MF2_bulk$Year, mod_Ct_MF2_bulk$Ct, #mod bulk C 
      type = "l", lwd = 2,
      xlab = "Year", ylab = stocks_label,
      main = "Modeled vs Observed C stocks",
      ylim = c(y_min_C, y_max_C))
-lines(mod_C_MF2_pools$Year, mod_C_MF2_pools$C_fast, #mod fast pool C 
-      col = "blue", lty = 2, lwd = 1.5)
-lines(mod_C_MF2_pools$Year, mod_C_MF2_pools$C_slow, #mod slow pool C 
-      col = "darkgreen", lty = 2, lwd = 1.5)
+lines(mod_Ct_MF2_pools$Year, mod_Ct_MF2_pools$Ct_fast, #mod fast pool C 
+      col = "blue", lty = 1, lwd = 2)
+lines(mod_Ct_MF2_pools$Year, mod_Ct_MF2_pools$Ct_slow, #mod slow pool C 
+      col = "darkgreen", lty = 1, lwd = 2)
 points(M2_Cobs_bulk$Year, M2_Cobs_bulk$Ct, #observed bulk C points
-       pch = 16, col = "red")
+       pch = 16, col = "black")
+points(M2_Cobs_325$Year, M2_Cobs_325$Ct_fast, #observed fast pool C points
+       pch = 16, col = "blue")
+points(M2_Cobs_400$Year, M2_Cobs_400$Ct_slow, #observed slow pool C points
+       pch = 16, col = "darkgreen")
+legend("topright", 
+       legend = c("Bulk", "Fast Pool", "Slow Pool"),
+       col = c("black", "blue", "darkgreen"),
+       lty = c(1, 1, 1, 1), 
+       pch = c(NA, NA, NA, NA))
 
 ##Delta14C plot
-y_min <- min(mod_F14C_MF2_pools$Delta14C_slow, M2_C14obs_bulk$C14t, na.rm = TRUE)
-y_max <- max(mod_F14C_MF2_pools$Delta14C_fast, na.rm = TRUE)
+y_min_14C <- min(M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
+                 mod_C14t_MF2_bulk$C14t, mod_C14t_MF2_pools$C14t_fast, mod_C14t_MF2_pools$C14t_slow, na.rm = TRUE)
+y_max_14C <- max(M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
+                 M2_C14obs_bulk$C14t, M2_C14obs_325$C14t_fast, M2_C14obs_400$C14t_slow, 
+                 mod_C14t_MF2_bulk$C14t, mod_C14t_MF2_pools$C14t_fast, mod_C14t_MF2_pools$C14t_slow, na.rm = TRUE)
 
 par(mar = c(5, 5, 4, 2))  # bottom, left, top, right
-plot(mod_F14C_MF2_bulk$Year, mod_F14C_MF2_bulk$Delta14C_bulk, #mod bulk C 
+plot(mod_C14t_MF2_bulk$Year, mod_C14t_MF2_bulk$C14t, # mod bulk Delta14C 
      type = "l", lwd = 2,
      xlab = "Year", ylab = Delta14Clabel,
      main = "Modeled vs Observed Delta14C",
-     ylim = c(y_min, y_max))
-lines(mod_F14C_MF2_pools$Year, mod_F14C_MF2_pools$Delta14C_fast, #mod fast pool 14C
-      col = "blue", lty = 2, lwd = 1.5)
-lines(mod_F14C_MF2_pools$Year, mod_F14C_MF2_pools$Delta14C_slow, #mod slow pool 14C 
-      col = "darkgreen", lty = 2, lwd = 1.5)
-points(M2_C14obs_bulk$Year, M2_C14obs_bulk$C14t, #observed bulk 14C points
-       pch = 16, col = "red")
+     ylim = c(y_min_14C, y_max_14C))
+lines(mod_C14t_MF2_pools$Year, mod_C14t_MF2_pools$C14t_fast, # mod fast pool Delta14C
+      col = "blue", lty = 1, lwd = 2)
+lines(mod_C14t_MF2_pools$Year, mod_C14t_MF2_pools$C14t_slow, # mod slow pool Delta14C 
+      col = "darkgreen", lty = 1, lwd = 2)
+lines(Atm14C$Year, Atm14C$mean.Delta14C, #atm 14C 
+      col = "purple", lty = 1, lwd = 2)
+points(M2_C14obs_bulk$Year, M2_C14obs_bulk$C14t, #observed bulk Delta14C points
+       pch = 16, col = "black")
+points(M2_C14obs_325$Year, M2_C14obs_325$C14t_fast, #observed fast pool Delta14C points
+       pch = 16, col = "blue")
+points(M2_C14obs_400$Year, M2_C14obs_400$C14t_slow, #observed slow pool Delta14C points
+       pch = 16, col = "darkgreen")
+legend("topright", 
+       legend = c("Bulk", "Fast Pool", "Slow Pool", "Atm"),
+       col = c("black", "blue", "darkgreen", "purple"),
+       lty = c(1, 1, 1, 1), 
+       pch = c(NA, NA, NA, NA))
 
 ### MCMC optimization
 var0_M2 <- mFit_M2$var_ms_unweighted
@@ -182,6 +210,5 @@ parsMCMC_M2<-summary(MCMC_M2)
 summarysR_M2<-summary(sR_M2) # mean is the Ct (g m-2) predicted
 nx_M2<-attributes(summarysR_M2)$nx
 C14tR_M2<-as.data.frame(summarysR_M2[(nx_M2+1):(2*nx_M2),]) #mean is the Delta_C14t (per mille) predicted
-
 
 pairs(MCMC,nsample=500) #check inter-dependence of parameters using 500 MCMC runs;
