@@ -5,18 +5,22 @@ format: html
 editor: visual
 ---
 
+Teneille's project repository is available on Github at [this link](https://github.com/Teneille97/nel_sweden_agsoil_2026).
+
 ## Overview
 
-Teneille's full project repository is available at <https://github.com/Teneille97/nel_sweden_agsoil_2026>.
+Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were samples from 1957 - 2019. 
+Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-\deg C and 400-\deg C stable). 
+Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined plant-derived carbon inputs were estimated.
 
 ## Simple two-pool models
 
-We fit two-pool models using observed C stocks and \Delta $^{14}$C measurements of bulk soil and organic matter fractions, where fractions stable at 325 and 400 degrees are treated as the "fast" and slow-cycling pools, respectively. 
+We fit two-pool models (script available [here](https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/14C_models_sweden.R)) using observed C stocks and \Delta $^{14}$C measurements of bulk soil and organic matter fractions, where fractions stable at 325 and 400 degrees are treated as the "fast" and slow-cycling pools, respectively.
 
 **Key points**
- 
--  Because the 325-stable pool has technically already lost the faster-cycling pool that was initially combusted, we see over-predictions of the fractions to compensate for this "missing carbon".
--  The observed \Delta $^{14}$C of bulk soil remains constant despite the predicted increase that was predicted during the atmospheric spike in bomb carbon; this means that very little new carbon was incorporated into soil organic matter, potentially due to erosion and/ or management practices such as tillage or residue removals. 
+
+-   Because the 325-stable pool has technically already lost the faster-cycling pool that was initially combusted, we see over-predictions of the fractions to compensate for this "missing carbon".
+-   The observed \Delta $^{14}$C of bulk soil remains constant despite the predicted increase that was predicted during the atmospheric spike in bomb carbon; this means that very little new carbon was incorporated into soil organic matter, potentially due to erosion and/ or management practices such as tillage or residue removals.
 
 ```{r}
 #| echo: false
@@ -36,13 +40,13 @@ for (i in seq_along(plots)) {
 
 ## Nested two-pool models
 
-We fit two-pool models treating the 325-stable pool, as "bulk" soil and using observed  C stocks and \Delta $^{14}$C measurements of the 325-stable pool and bulk soil. In this nested scenario, the observed 'fast' pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled. 
+We fit two-pool models treating the 325-stable pool, as "bulk" soil and using observed C stocks and \Delta $^{14}$C measurements of the 325-stable pool and bulk soil. In this nested scenario, the observed 'fast' pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
 
 **Key points**
 
--  The models show that the observed carbon stocks and \Delta $^{14}$C values of the 325-stable pool are well explained by a heterogeneous system of a faster cycling pool along with the residual pool. 
--  This means that our 325 pool, although modeled initially as a single fast-cycling pool, actually represents a nested pool of intermediate- and slow-cycling carbon.
--  Preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits. 
+-   The models show that the observed carbon stocks and \Delta $^{14}$C values of the 325-stable pool are well explained by a heterogeneous system of a faster cycling pool along with the residual pool.
+-   This means that our 325 pool, although modeled initially as a single fast-cycling pool, actually represents a nested pool of intermediate- and slow-cycling carbon.
+-   Preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits.
 
 ```{r}
 #| echo: false

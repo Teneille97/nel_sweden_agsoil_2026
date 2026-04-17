@@ -25,7 +25,7 @@ bulk_density <- c(
   "R94-1966" = 1.37
 )
 
-C0_site_400_vals <- c(
+F0_site_325_vals <- c(
   "M2-1957" = -150,
   "M4-1957" = -500,
   "M6-1957" = -250,
@@ -67,18 +67,18 @@ run_model_site <- function(site_name) {
   
   ## split thermal pools -----------------------------------------------------
   
-  bulk <- subset(site_df, Temperature...C. == "325")
-  pool_400 <- subset(site_df, Temperature...C. == "400")
+  bulk <- subset(site_df, Temperature...C. == "Soil")
+  pool_325 <- subset(site_df, Temperature...C. == "325")
   
   ## observed data -----------------------------------------------------------
   
   Cobs_bulk <- data.frame(Year = bulk$Year, Ct = bulk$C_stocks_gm2)
   C14obs_bulk <- data.frame(Year = bulk$Year, C14t = bulk$d14C)
   
-  Cobs_400 <- data.frame(Year = pool_400$Year, Ct_slow = pool_400$C_stocks_gm2)
-  C14obs_400 <- data.frame(Year = pool_400$Year, C14t_slow = pool_400$d14C)
+  Cobs_slow <- data.frame(Year = pool_325$Year, Ct_slow = pool_325$C_stocks_gm2)
+  C14obs_slow <- data.frame(Year = pool_325$Year, C14t_slow = pool_325$d14C)
   
-  Cobs_fast <- data.frame(Year = pool_400$Year, Ct_fast = Cobs_bulk$Ct-Cobs_400$Ct_slow) #C fast = C 325 - C 400
+  Cobs_fast <- data.frame(Year = pool_325$Year, Ct_fast = Cobs_bulk$Ct-Cobs_slow$Ct_slow) # C fast  =C bulk - C 325
   
   
   ## time + initial parameters ----------------------------------------------
@@ -86,7 +86,7 @@ run_model_site <- function(site_name) {
   yr <- seq(1957, 2019, by = 1/12)
   inipars <- c(0.5,0.001,0.01, 0.4, 0.9, mean_C_inputs*0.1)
   C0_bulk <- Cobs_bulk[1,2]
-  F0_400 <- C0_site_400_vals[site_name]
+  F0_325 <- F0_site_325_vals[site_name]
   F0_bulk <- C14obs_bulk[1,2]
   
   ## model function ----------------------------------------------------------
@@ -97,7 +97,7 @@ run_model_site <- function(site_name) {
       t = yr,
       ks = pars[1:2],
       C0 = C0_bulk * c(pars[4], 1 - pars[4]),
-      F0_Delta14C = c(F0_bulk * pars[5], F0_400),
+      F0_Delta14C = c(F0_bulk * pars[5], F0_325),
       In = pars[6],
       a21 = pars[1] * pars[3],
       inputFc = Atm14C
@@ -127,9 +127,8 @@ run_model_site <- function(site_name) {
     Cost1 <- modCost(out, Cobs_bulk, x = "Year")
     Cost2 <- modCost(out, C14obs_bulk, x = "Year", cost = Cost1)
     Cost3 <- modCost(out, Cobs_fast, x = "Year", cost = Cost2)
-    Cost4 <- modCost(out, Cobs_400, x = "Year", cost = Cost3)
-    
-    modCost(out, C14obs_400, x = "Year", cost = Cost4)
+    Cost4 <- modCost(out, Cobs_slow, x = "Year", cost = Cost3)
+    modCost(out, C14obs_slow, x = "Year", cost = Cost4)
   }
   
   ## optimize ---------------------------------------------------------------
@@ -170,7 +169,7 @@ run_model_site <- function(site_name) {
     # observations
     geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
     geom_point(data = Cobs_fast, aes(Year, Ct_fast, colour = "Fast")) +
-    geom_point(data = Cobs_400, aes(Year, Ct_slow, colour = "Slow")) +
+    geom_point(data = Cobs_slow, aes(Year, Ct_slow, colour = "Slow")) +
     
     scale_colour_manual(
       name = "Pool",
@@ -196,7 +195,7 @@ run_model_site <- function(site_name) {
     
     # observations
     geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
-    geom_point(data = C14obs_400, aes(Year, C14t_slow, colour = "Slow")) +
+    geom_point(data = C14obs_slow, aes(Year, C14t_slow, colour = "Slow")) +
     
     scale_colour_manual(
       name = "Pool",
@@ -229,7 +228,7 @@ names(results) <- sites
 
 ## save all plots to local dir ----------------------------------------------
 
-output_dir <- "plots/325asbulk"
+output_dir <- "plots/325asslow"
 for (site in names(results)) {
   
   res <- results[[site]]
@@ -254,5 +253,4 @@ for (name in names(results)) {
   saveRDS(results[[name]]$plot_C14,
           file = file.path(output_dir, paste0(name, "_14C.rds")))
 }
-
-save(results, file   = "modruns/results_325asbulk.Rdata")
+save(results, file = file.path("mod_runs", "results_325asslow.Rdata"))
