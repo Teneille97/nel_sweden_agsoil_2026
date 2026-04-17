@@ -61,13 +61,13 @@ F0_M2_bulk<-M2_C14obs_bulk[1,2]
 F0_M2_400<-M2_C14obs_400[1,2]
 
 ### Define function to run a two-pool series model
-#pars[1:5] = kf, ks, alpha sf, C0fb, F0fb, I
+#pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
 
 mf=function(pars){
   md=TwopSeriesModel14(t=yr,ks=pars[1:2],C0=C0_M2_bulk*c(pars[4], 1-pars[4]), #par[4] allocates a portion of initial bulk C to fast pool
                        F0_Delta14C = c(F0_M2_bulk * pars[5], -150), #par[5] allocates a portion of initial Delta14C of bulk to fast pool 
                        #and initial D14C of slow pool is assigned that of thermal pool 400
-                       In=pars[6], #constant input scalar 
+                       In=mean_C_inputs, #constant input scalar 
                        a21=pars[1]*pars[3], inputFc = Atm14C) #where pars[1] = kf and pars[3] = alpha sf
   Ct_pools = getC(md) # matrix with 2 columns for fast and slow pool C
   C14_pools = getF14(md) # matrix with 2 columns for fast and slow pool Delta 14C
@@ -101,20 +101,20 @@ mc=function(pars){
                  x = "Year", cost = Cost5))
 } 
 
-inipars=c(0.5,0.001,0.01, 0.1, 0.9, mean_C_inputs) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
+inipars=c(0.5,0.001,0.01, 0.1, 0.9) #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb
 
 yr <- as.numeric(seq(1957,2019, by = 1/12))
 
 ### Run model
 
 ## Uncomment the following to run again
-# mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(2,0.5,1,1,1, mean_C_inputs*1.5),lower=c(0,0,0,0,0, 0))
-# bestpars_M2=mFit_M2$par
+mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(2,0.5,1,1,1),lower=c(0,0,0,0,0))
+bestpars_M2=mFit_M2$par
 # save(bestpars_M2, file="bestpars_M2.RData")
 ## Otherwise load previously saved bestpars.RData
 bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
-                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
-                  In=pars[6], 
+                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], -150),
+                  In=mean_C_inputs, 
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
 mod_C14t_MF2_pools=data.frame(Year = yr, 
