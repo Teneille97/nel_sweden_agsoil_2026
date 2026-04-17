@@ -230,11 +230,34 @@ run_model_site <- function(site_name) {
 results <- lapply(sites, run_model_site)
 names(results) <- sites
 
+## save all plots to local dir ----------------------------------------------
 
-# how to view plots
-#results[["M4-1957"]]$plot_C
-#can export as follows:
-#ggsave("M4_C.png", results[["M4-1957"]]$plot_C)
+output_dir <- "plots/simple_twopool"
+for (site in names(results)) {
+  
+  res <- results[[site]]
+  
+  # file names
+  file_C <- file.path(output_dir, paste0(site, "_C.png"))
+  file_C14 <- file.path(output_dir, paste0(site, "_C14.png"))
+  
+  # save plots
+  ggsave(filename = file_C, plot = res$plot_C,
+         width = 7, height = 5, dpi = 300, bg = "white")
+  
+  ggsave(filename = file_C14, plot = res$plot_C14,
+         width = 7, height = 5, dpi = 300, bg = "white")
+}
+
+## save all plots as rds for loading to qmd ---------------------------------
+for (name in names(results)) {
+  saveRDS(results[[name]]$plot_C,
+          file = file.path(output_dir, paste0(name, "_C.rds")))
+  
+  saveRDS(results[[name]]$plot_C14,
+          file = file.path(output_dir, paste0(name, "_14C.rds")))
+}
+
 
 ## --------------------------------------------------------------------------
 ## combine outputs
