@@ -114,7 +114,7 @@ yr <- as.numeric(seq(1957,2019, by = 1/12))
 ## Otherwise load previously saved bestpars.RData
 bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
                   F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
-                  In=mean_C_inputs, 
+                  In=pars[6], 
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
 mod_C14t_MF2_pools=data.frame(Year = yr, 
