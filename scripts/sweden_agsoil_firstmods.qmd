@@ -20,6 +20,9 @@ We fit two-pool models using observed C stocks and \Delta $^{14}$C measurements 
 
 ```{r}
 #| echo: false
+#| warning: false
+#| message: false
+
 library(here)
 
 files <- list.files(here("plots/simple_twopool"), pattern = "\\.rds$", full.names = TRUE)
@@ -43,6 +46,9 @@ We fit two-pool models treating the 325-stable pool, as "bulk" soil and using ob
 
 ```{r}
 #| echo: false
+#| warning: false
+#| message: false
+
 library(here)
 
 files <- list.files(here("plots/325asbulk"), pattern = "\\.rds$", full.names = TRUE)
