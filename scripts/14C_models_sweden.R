@@ -58,14 +58,14 @@ M2_C14obs_400 <- data.frame(Year = M2_400$Year, C14t_slow = M2_400$d14C)
 ### Initial C & Delta14C
 C0_M2_bulk<-M2_Cobs_bulk[1,2]
 F0_M2_bulk<-M2_C14obs_bulk[1,2]
-F0_M2_400<-M2_C14obs_400[1,2]
+F0_M2_400<--150
 
 ### Define function to run a two-pool series model
 #pars[1:5] = kf, ks, alpha sf, C0fb, F0fb, I
 
 mf=function(pars){
   md=TwopSeriesModel14(t=yr,ks=pars[1:2],C0=C0_M2_bulk*c(pars[4], 1-pars[4]), #par[4] allocates a portion of initial bulk C to fast pool
-                       F0_Delta14C = c(F0_M2_bulk * pars[5], -150), #par[5] allocates a portion of initial Delta14C of bulk to fast pool 
+                       F0_Delta14C = c(F0_M2_bulk * pars[5], F0_M2_400), #par[5] allocates a portion of initial Delta14C of bulk to fast pool 
                        In=pars[6], #constant input scalar 
                        a21=pars[1]*pars[3], inputFc = Atm14C) #where pars[1] = kf and pars[3] = alpha sf
   Ct_pools = getC(md) # matrix with 2 columns for fast and slow pool C
@@ -112,7 +112,7 @@ bestpars_M2=mFit_M2$par
 # save(bestpars_M2, file="bestpars_M2.RData")
 ## Otherwise load previously saved bestpars.RData
 bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
-                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], -150),
+                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
                   In=bestpars_M2[6], 
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
