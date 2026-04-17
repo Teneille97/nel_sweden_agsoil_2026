@@ -108,13 +108,22 @@ yr <- as.numeric(seq(1957,2019, by = 1/12))
 ### Run model
 
 ## Uncomment the following to run again
+<<<<<<< HEAD
 mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(2,0.5,1,1,1, mean_C_inputs*0.5),lower=c(0,0,0,0,0,0))
+=======
+mFit_M2=modFit(f=mc,p=inipars,method="Nelder-Mead",upper=c(2,0.5,1,1,1),lower=c(0,0,0,0,0))
+>>>>>>> reduced_inputs
 bestpars_M2=mFit_M2$par
 # save(bestpars_M2, file="bestpars_M2.RData")
 ## Otherwise load previously saved bestpars.RData
 bestModel_M2<-TwopSeriesModel14(t=yr,ks=bestpars_M2[1:2],C0=C0_M2_bulk*c(bestpars_M2[4], 1-bestpars_M2[4]), 
+<<<<<<< HEAD
                   F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], F0_M2_400),
                   In=bestpars_M2[6], 
+=======
+                  F0_Delta14C = c(F0_M2_bulk * bestpars_M2[5], -150),
+                  In=mean_C_inputs, 
+>>>>>>> reduced_inputs
                   a21=bestpars_M2[1]*bestpars_M2[3], inputFc = Atm14C) 
 
 mod_C14t_MF2_pools=data.frame(Year = yr, 
