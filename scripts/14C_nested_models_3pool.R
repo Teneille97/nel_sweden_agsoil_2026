@@ -263,3 +263,12 @@ for (site in names(results)) {
   ggsave(filename = file_C14, plot = res$plot_C14,
          width = 7, height = 5, dpi = 300, bg = "white")
 }
+
+## save all plots as rds for loading to qmd ---------------------------------
+for (name in names(results)) {
+  saveRDS(results_3p[[name]]$plot_C,
+          file = file.path(output_dir, paste0(name, "_C.rds")))
+  
+  saveRDS(results[[name]]$plot_C14,
+          file = file.path(output_dir, paste0(name, "_14C.rds")))
+}
