@@ -100,13 +100,14 @@ window.Quarto = {
 </header>
 
 
+<p>Teneille’s project repository is available on Github at <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026">this link</a>.</p>
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>Teneille’s full project repository is available at <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026" class="uri">https://github.com/Teneille97/nel_sweden_agsoil_2026</a>.</p>
+<p>Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were samples from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-C and 400-C stable). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined plant-derived carbon inputs were estimated.</p>
 </section>
 <section id="simple-two-pool-models" class="level2">
 <h2 class="anchored" data-anchor-id="simple-two-pool-models">Simple two-pool models</h2>
-<p>We fit two-pool models using observed C stocks and <span class="math inline">\(^{14}\)</span>C measurements of bulk soil and organic matter fractions, where fractions stable at 325 and 400 degrees are treated as the “fast” and slow-cycling pools, respectively.</p>
+<p>We fit two-pool models (script available <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/14C_models_sweden.R">here</a>) using observed C stocks and <span class="math inline">\(^{14}\)</span>C measurements of bulk soil and organic matter fractions, where fractions stable at 325 and 400 degrees are treated as the “fast” and slow-cycling pools, respectively.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>Because the 325-stable pool has technically already lost the faster-cycling pool that was initially combusted, we see over-predictions of the fractions to compensate for this “missing carbon”.</li>
@@ -171,14 +172,14 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="nested-two-pool-models" class="level2">
-<h2 class="anchored" data-anchor-id="nested-two-pool-models">Nested two-pool models</h2>
-<p>We fit two-pool models treating the 325-stable pool, as “bulk” soil and using observed C stocks and <span class="math inline">\(^{14}\)</span>C measurements of the 325-stable pool and bulk soil. In this nested scenario, the observed ‘fast’ pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<section id="modeling-the-invisible-intermediate-pool" class="level2">
+<h2 class="anchored" data-anchor-id="modeling-the-invisible-intermediate-pool">Modeling the invisible intermediate pool</h2>
+<p>We fit two-pool models by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as “bulk” soil and the 400-stable soil remains the slow pool. In this scenario, the observed ‘fast’ pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>The models show that the observed carbon stocks and <span class="math inline">\(^{14}\)</span>C values of the 325-stable pool are well explained by a heterogeneous system of a faster cycling pool along with the residual pool.</li>
 <li>This means that our 325 pool, although modeled initially as a single fast-cycling pool, actually represents a nested pool of intermediate- and slow-cycling carbon.</li>
-<li>Preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits.</li>
+<li>Preliminary attempts to model the intermediate fraction in a 3-pool nested system did not give good fits.</li>
 </ul>
 <div class="cell">
 <div class="cell-output-display">
@@ -234,6 +235,142 @@ window.Quarto = {
 <div>
 <figure class="figure">
 <p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-2-8.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="modeling-the-invisible-fast-pool" class="level2">
+<h2 class="anchored" data-anchor-id="modeling-the-invisible-fast-pool">Modeling the invisible fast pool</h2>
+<p>We fit two-pool models with the actual bulk pool and treating the 325-stable pool, as the “slow” pool, leaving out the 400-stable pool. In this nested scenario, the observed fast pool carbon stocks are calculated as the difference between bulk and 325-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<p><strong>Key points</strong></p>
+<ul>
+<li>The models show that the observed carbon stocks and <span class="math inline">\(^{14}\)</span>C values of the bulk soil are well explained by a heterogeneous system of a fast-cycling pool along with the 325-stable pool.</li>
+<li>This means that combustion at 325 degrees removed a fast-cycling fraction which was not captured in our initial models, which treat the 325-pool as a fast fraction, even though it is technically a nested pool of intermediate- and slow-cycling carbon.</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-3.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-4.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-5.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-6.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-7.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-3-8.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="another-nested-model-attempt" class="level2">
+<h2 class="anchored" data-anchor-id="another-nested-model-attempt">Another nested model attempt</h2>
+<p>We already mentioned that preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits. So here We attempted to fit three-pool models with the actual bulk pool and and slow (400-stable) pools, using the modeled ‘invisible fast pool’<span class="math inline">\(^{14}\)</span>C values from the previous step, as if they were observed values. In this scenario, the observed intermediate pool carbon stocks are calculated as the difference between 325-stable carbon and 400-stable carbon stocks, while the intermediate pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<p><strong>Key points</strong></p>
+<ul>
+<li>The <span class="math inline">\(^{14}\)</span>C trends of intermediate pool differed a lot between treatments, potentially compensating for bad fits</li>
+<li>The intermediate pool, although small, seems to play an important role in explaining the observed bulk <span class="math inline">\(^{14}\)</span>C values</li>
+<li>In some treatments, the pool is highly stable, but in one treatment it incorporates an unreasonable amount of modern carbon from the fast pool - perhaps the systems collapses from an initial 3-pool system to a 2-pool system due to changes management at some point in time?</li>
+<li>Perhaps knowledge about historic management practices and Bayesian uncertainty distributions can help to narrow down the likely ranges of transfer</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-3.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-4.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-5.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-6.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-7.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-8.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
