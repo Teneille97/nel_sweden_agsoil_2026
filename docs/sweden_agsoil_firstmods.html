@@ -181,7 +181,7 @@ window.Quarto = {
 </section>
 <section id="modeling-the-invisible-intermediate-pool" class="level2">
 <h2 class="anchored" data-anchor-id="modeling-the-invisible-intermediate-pool">Modeling the invisible intermediate pool</h2>
-<p>We fit two-pool models by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as “bulk” soil and the 400-stable soil remains the slow pool. In this scenario, the observed ‘fast’ pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<p>We fit two-pool models (script available <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/325asbulk.R">here</a>) by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as “bulk” soil and the 400-stable soil remains the slow pool. In this scenario, the observed ‘fast’ pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>The models show that the observed carbon stocks and <span class="math inline">\(^{14}\)</span>C values of the 325-stable pool are well explained by a heterogeneous system of a faster cycling pool along with the residual pool.</li>
@@ -261,7 +261,7 @@ window.Quarto = {
 </section>
 <section id="modeling-the-invisible-fast-pool" class="level2">
 <h2 class="anchored" data-anchor-id="modeling-the-invisible-fast-pool">Modeling the invisible fast pool</h2>
-<p>We fit two-pool models with the actual bulk pool and treating the 325-stable pool, as the “slow” pool, leaving out the 400-stable pool. In this nested scenario, the observed fast pool carbon stocks are calculated as the difference between bulk and 325-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<p>We fit two-pool models (script available <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/325asslow.R">here</a>) with the actual bulk pool and treating the 325-stable pool, as the “slow” pool, leaving out the 400-stable pool. In this nested scenario, the observed fast pool carbon stocks are calculated as the difference between bulk and 325-stable carbon stocks, while the fast pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>The models show that the observed carbon stocks and <span class="math inline">\(^{14}\)</span>C values of the bulk soil are well explained by a heterogeneous system of a fast-cycling pool along with the 325-stable pool.</li>
@@ -335,7 +335,7 @@ window.Quarto = {
 </section>
 <section id="nested-model-attempt" class="level2">
 <h2 class="anchored" data-anchor-id="nested-model-attempt">Nested model attempt</h2>
-<p>We already mentioned that the first attempt to model the nested intermediate fraction using fast pool predictions of the 325-as-bulk in a subsequent 3-pool system, did not give good fits. So next, we attempted to model the intermediate fraction using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows: (1) The modeled fast pool <span class="math inline">\(^{14}\)</span>C values from the 325-as-slow system, were used as “observed” fast-pool values. (2) Observed intermediate pool carbon stocks were calculated as the difference between 325-stable carbon and 400-stable carbon stocks. (3) The intermediate pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<p>We already mentioned that the first attempt to model the nested intermediate fraction using fast pool predictions of the 325-as-bulk in a subsequent 3-pool system, did not give good fits. So next, we attempted to model the intermediate fraction (script available <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/3pool.R">here</a>) using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows: (1) The modeled fast pool <span class="math inline">\(^{14}\)</span>C values from the 325-as-slow system, were used as “observed” fast-pool values. (2) Observed intermediate pool carbon stocks were calculated as the difference between 325-stable carbon and 400-stable carbon stocks. (3) The intermediate pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>The <span class="math inline">\(^{14}\)</span>C trends of intermediate pool differed a lot between treatments, potentially compensating for bad fits</li>
