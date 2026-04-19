@@ -36,7 +36,11 @@ plots <- lapply(files, readRDS)
 for (i in seq_along(plots)) {
   print(plots[[i]])
 }
+
+
 ```
+
+###CONTINUE HERE - MAKE SURE (1) MODS FOR ALL SCRIPTS HAVE RUN TO SAVE RESULTS TO LOCAL REPO (2) CORRECT RESULTS ARE LOADED IN QMD AND (3) ARE PARS IN RESULTS OU, THE INI OR BESTPARS???
 
 ## Modeling the invisible intermediate pool
 
@@ -79,6 +83,7 @@ We fit two-pool models with the actual bulk pool and treating the 325-stable poo
 #| message: false
 
 library(here)
+library(stats)
 
 files <- list.files(here("plots/325asslow"), pattern = "\\.rds$", full.names = TRUE)
 
@@ -87,7 +92,40 @@ plots <- lapply(files, readRDS)
 for (i in seq_along(plots)) {
   print(plots[[i]])
 }
+
+load(here::here("mod_runs/results_325asslow.Rdata"))
+results_325asslow<-results
+
+list_of_dfs <- lapply(names(results_325asslow), function(i) {
+  result_subset <- results_325asslow[[i]]
+  
+  param_names <- c("ks", "kf", "alpha21", "C0bf", "F0bf", "In")
+  
+  long_pars_df <- data.frame(
+    site_name = result_subset$site, 
+    param = param_names, 
+    value = result_subset$pars
+  )
+  
+  wide <- reshape(
+    long_pars_df, 
+    idvar = "site_name", 
+    timevar = "param", 
+    direction = "wide"
+  )
+  
+  colnames(wide) <- gsub("value.", "", colnames(wide))
+  
+  return(wide)
+})
+
+final_df <- do.call(rbind, list_of_dfs)
+
+print(final_df)
+
 ```
+
+##THERE WAS AN ISSUE WITH RESULTS SAVE, GO BACK TO SCRIPT TO MAKE SURE IT WORKED?
 
 ## Another nested model attempt
 
