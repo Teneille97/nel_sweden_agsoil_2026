@@ -273,3 +273,4 @@ for (name in names(results)) {
           file = file.path(output_dir, paste0(name, "_14C.rds")))
 }
 
+save(results, file = file.path("mod_runs", "results_3pool.Rdata"))

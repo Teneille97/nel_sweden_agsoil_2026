@@ -28,7 +28,9 @@ We fit two-pool models (script available [here](https://github.com/Teneille97/ne
 #| message: false
 
 library(here)
+library(stats)
 
+### plots 
 files <- list.files(here("plots/simple_twopool"), pattern = "\\.rds$", full.names = TRUE)
 
 plots <- lapply(files, readRDS)
@@ -37,10 +39,36 @@ for (i in seq_along(plots)) {
   print(plots[[i]])
 }
 
+### table of best pars
 
+process_results <- function(results_obj) {
+  list_of_dfs <- lapply(names(results_obj), function(i) {
+    result_subset <- results_obj[[i]]
+    param_names <- param_names_325asslow
+    long_pars_df <- data.frame(
+      site_name = result_subset$site, 
+      param = param_names, 
+      value = result_subset$pars
+    )
+    wide <- reshape(
+      long_pars_df, 
+      idvar = "site_name", 
+      timevar = "param", 
+      direction = "wide"
+    )
+    colnames(wide) <- gsub("value.", "", colnames(wide))
+    return(wide)
+  })
+  final_df <- do.call(rbind, list_of_dfs)
+  return(final_df)
+}
+
+load(here::here("mod_runs/results_simple_twop.Rdata"))
+results_simple_twop<-results
+param_names_simple_twop <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
+
+process_results(results_simple_twop)
 ```
-
-###CONTINUE HERE - MAKE SURE (1) MODS FOR ALL SCRIPTS HAVE RUN TO SAVE RESULTS TO LOCAL REPO (2) CORRECT RESULTS ARE LOADED IN QMD AND (3) ARE PARS IN RESULTS OU, THE INI OR BESTPARS???
 
 ## Modeling the invisible intermediate pool
 
@@ -66,6 +94,13 @@ plots <- lapply(files, readRDS)
 for (i in seq_along(plots)) {
   print(plots[[i]])
 }
+
+load(here::here("mod_runs/results_325asbulk.Rdata"))
+results_325asbulk<-results
+param_names_results_325asbulk <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
+
+process_results(results_325asbulk)
+
 ```
 
 ## Modeling the invisible fast pool
@@ -95,37 +130,10 @@ for (i in seq_along(plots)) {
 
 load(here::here("mod_runs/results_325asslow.Rdata"))
 results_325asslow<-results
+param_names_325asslow <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
 
-list_of_dfs <- lapply(names(results_325asslow), function(i) {
-  result_subset <- results_325asslow[[i]]
-  
-  param_names <- c("ks", "kf", "alpha21", "C0bf", "F0bf", "In")
-  
-  long_pars_df <- data.frame(
-    site_name = result_subset$site, 
-    param = param_names, 
-    value = result_subset$pars
-  )
-  
-  wide <- reshape(
-    long_pars_df, 
-    idvar = "site_name", 
-    timevar = "param", 
-    direction = "wide"
-  )
-  
-  colnames(wide) <- gsub("value.", "", colnames(wide))
-  
-  return(wide)
-})
-
-final_df <- do.call(rbind, list_of_dfs)
-
-print(final_df)
-
+process_results(results_325asslow)
 ```
-
-##THERE WAS AN ISSUE WITH RESULTS SAVE, GO BACK TO SCRIPT TO MAKE SURE IT WORKED?
 
 ## Another nested model attempt
 
@@ -153,4 +161,10 @@ plots <- lapply(files, readRDS)
 for (i in seq_along(plots)) {
   print(plots[[i]])
 }
+
+load(here::here("mod_runs/results_results_3pool.Rdata"))
+results_3pool<-results
+param_names_results_3pool <- c("kf", "ki", "ks", "alpha21", "F0ib", "In", "alpha32")
+process_results(results_3pool)
+
 ```
