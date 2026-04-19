@@ -170,6 +170,13 @@ window.Quarto = {
 </figure>
 </div>
 </div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  site_name         kf          ks      alpha21      C0bf      F0bf        In
+1   M2-1957 0.13191253 0.009049197 1.114015e-04 0.6981556 0.9996694 333.32348
+2   M4-1957 0.04132338 0.011165194 8.839195e-04 0.6618512 0.9901028  47.27437
+3   M6-1957 0.10736132 0.007995592 4.868024e-05 0.6945212 0.9997037 333.35603
+4  R94-1966 0.12666357 0.010048282 1.960639e-03 0.6253734 0.9976142 332.24826</code></pre>
+</div>
 </div>
 </section>
 <section id="modeling-the-invisible-intermediate-pool" class="level2">
@@ -238,6 +245,18 @@ window.Quarto = {
 </figure>
 </div>
 </div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  site_name         kf           ks      alpha21      C0bf        F0bf
+1   M2-1957 0.02645898 0.0002326813 0.0003256689 0.7412138 0.001097523
+2   M4-1957 0.06792897 0.0021980427 0.0044851500 0.6745602 0.850905752
+3   M6-1957 0.17732943 0.0083331955 0.0011233990 0.6426457 0.965373781
+4  R94-1966 0.26730870 0.0004849628 0.0003540170 0.7311211 0.999395377
+         In
+1  17.21445
+2  34.82059
+3 276.21940
+4 293.59062</code></pre>
+</div>
 </div>
 </section>
 <section id="modeling-the-invisible-fast-pool" class="level2">
@@ -305,11 +324,18 @@ window.Quarto = {
 </figure>
 </div>
 </div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  site_name         kf          ks      alpha21      C0bf        F0bf       In
+1   M2-1957 0.09672165 0.009037702 0.0025506213 0.6879941 0.977119202 332.8247
+2   M4-1957 0.12456951 0.011336817 0.0009676393 0.5937014 0.992508985 239.3670
+3   M6-1957 0.08972288 0.005594226 0.0017350532 0.6489225 0.994977121 333.0436
+4  R94-1966 0.03932975 0.002122097 0.0186639872 0.7193688 0.002196955 128.4293</code></pre>
+</div>
 </div>
 </section>
-<section id="another-nested-model-attempt" class="level2">
-<h2 class="anchored" data-anchor-id="another-nested-model-attempt">Another nested model attempt</h2>
-<p>We already mentioned that preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits. So here We attempted to fit three-pool models with the actual bulk pool and and slow (400-stable) pools, using the modeled ‘invisible fast pool’<span class="math inline">\(^{14}\)</span>C values from the previous step, as if they were observed values. In this scenario, the observed intermediate pool carbon stocks are calculated as the difference between 325-stable carbon and 400-stable carbon stocks, while the intermediate pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
+<section id="nested-model-attempt" class="level2">
+<h2 class="anchored" data-anchor-id="nested-model-attempt">Nested model attempt</h2>
+<p>We already mentioned that the first attempt to model the nested intermediate fraction using fast pool predictions of the 325-as-bulk in a subsequent 3-pool system, did not give good fits. So next, we attempted to model the intermediate fraction using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows: (1) The modeled fast pool <span class="math inline">\(^{14}\)</span>C values from the 325-as-slow system, were used as “observed” fast-pool values. (2) Observed intermediate pool carbon stocks were calculated as the difference between 325-stable carbon and 400-stable carbon stocks. (3) The intermediate pool <span class="math inline">\(^{14}\)</span>C values are strictly modeled.</p>
 <p><strong>Key points</strong></p>
 <ul>
 <li>The <span class="math inline">\(^{14}\)</span>C trends of intermediate pool differed a lot between treatments, potentially compensating for bad fits</li>
@@ -373,6 +399,18 @@ window.Quarto = {
 <p><img src="sweden_agsoil_firstmods_files/figure-html/unnamed-chunk-4-8.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  site_name        kf         ki          ks      alpha21     F0ib       In
+1   M2-1957 0.1178153 0.01295523 0.004960368 3.745855e-03 2.974582 415.0294
+2   M4-1957 0.1320384 0.07624803 0.004569983 7.067120e-02 2.686735 264.5006
+3   M6-1957 0.1009011 0.01003880 0.004998865 1.735510e-02 2.998804 376.4712
+4  R94-1966 0.1000062 0.01000726 0.004999965 1.038813e-05 2.999974 344.2392
+       alpha32
+1 6.696505e-03
+2 5.238558e-02
+3 4.749083e-04
+4 1.139213e-05</code></pre>
 </div>
 </div>
 </section>
