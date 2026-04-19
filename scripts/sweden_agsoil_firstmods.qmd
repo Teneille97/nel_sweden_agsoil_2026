@@ -41,10 +41,9 @@ for (i in seq_along(plots)) {
 
 ### table of best pars
 
-process_results <- function(results_obj) {
+process_results <- function(results_obj, param_names) {
   list_of_dfs <- lapply(names(results_obj), function(i) {
     result_subset <- results_obj[[i]]
-    param_names <- param_names_325asslow
     long_pars_df <- data.frame(
       site_name = result_subset$site, 
       param = param_names, 
@@ -67,10 +66,10 @@ load(here::here("mod_runs/results_simple_twop.Rdata"))
 results_simple_twop<-results
 param_names_simple_twop <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
 
-process_results(results_simple_twop)
+process_results(results_simple_twop, param_names_simple_twop)
 ```
 
-## Modeling the invisible intermediate pool
+## Modeling the invisible intermediate pool 
 
 We fit two-pool models by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as "bulk" soil and the 400-stable soil remains the slow pool. In this scenario, the observed 'fast' pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
 
@@ -99,7 +98,7 @@ load(here::here("mod_runs/results_325asbulk.Rdata"))
 results_325asbulk<-results
 param_names_results_325asbulk <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
 
-process_results(results_325asbulk)
+process_results(results_325asbulk, param_names_results_325asbulk)
 
 ```
 
@@ -132,13 +131,16 @@ load(here::here("mod_runs/results_325asslow.Rdata"))
 results_325asslow<-results
 param_names_325asslow <- c("kf", "ks", "alpha21", "C0bf", "F0bf", "In")
 
-process_results(results_325asslow)
+process_results(results_325asslow, param_names_results_325asbulk)
 ```
 
-## Another nested model attempt
+## Nested model attempt
 
-We already mentioned that preliminary attempts to model the intermediate fraction in a 3-pool system did not give good fits.
-So here We attempted to fit three-pool models with the actual bulk pool and and slow (400-stable) pools, using the modeled 'invisible fast pool'\Delta $^{14}$C values from the previous step, as if they were observed values. In this scenario, the observed intermediate pool carbon stocks are calculated as the difference between 325-stable carbon and 400-stable carbon stocks, while the intermediate pool \Delta $^{14}$C values are strictly modeled.
+We already mentioned that the first attempt to model the nested intermediate fraction using fast pool predictions of the 325-as-bulk in a subsequent 3-pool system, did not give good fits.
+So next, we attempted to model the intermediate fraction using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows:
+(1) The modeled fast pool \Delta $^{14}$C values from the 325-as-slow system, were used as "observed" fast-pool values. 
+(2) Observed intermediate pool carbon stocks were calculated as the difference between 325-stable carbon and 400-stable carbon stocks. 
+(3) The intermediate pool \Delta $^{14}$C values are strictly modeled.
 
 **Key points**
 
@@ -162,9 +164,9 @@ for (i in seq_along(plots)) {
   print(plots[[i]])
 }
 
-load(here::here("mod_runs/results_results_3pool.Rdata"))
-results_3pool<-results
+load(here::here("mod_runs/results_3pool.Rdata"))
+results_3pool<-results_3p
 param_names_results_3pool <- c("kf", "ki", "ks", "alpha21", "F0ib", "In", "alpha32")
-process_results(results_3pool)
+process_results(results_3pool, param_names_results_3pool)
 
 ```
