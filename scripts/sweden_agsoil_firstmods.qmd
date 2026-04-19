@@ -71,7 +71,7 @@ process_results(results_simple_twop, param_names_simple_twop)
 
 ## Modeling the invisible intermediate pool 
 
-We fit two-pool models by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as "bulk" soil and the 400-stable soil remains the slow pool. In this scenario, the observed 'fast' pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
+We fit two-pool models (script available [here](https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/325asbulk.R)) by ignoring the bulk measurements and creating a system where the 325-stable pool is seen as as "bulk" soil and the 400-stable soil remains the slow pool. In this scenario, the observed 'fast' pool carbon stocks are calculated as the difference between 325-stable and 400-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
 
 **Key points**
 
@@ -104,7 +104,7 @@ process_results(results_325asbulk, param_names_results_325asbulk)
 
 ## Modeling the invisible fast pool
 
-We fit two-pool models with the actual bulk pool and treating the 325-stable pool, as the "slow" pool, leaving out the 400-stable pool. In this nested scenario, the observed fast pool carbon stocks are calculated as the difference between bulk and 325-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
+We fit two-pool models (script available [here](https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/325asslow.R)) with the actual bulk pool and treating the 325-stable pool, as the "slow" pool, leaving out the 400-stable pool. In this nested scenario, the observed fast pool carbon stocks are calculated as the difference between bulk and 325-stable carbon stocks, while the fast pool \Delta $^{14}$C values are strictly modeled.
 
 **Key points**
 
@@ -137,7 +137,7 @@ process_results(results_325asslow, param_names_results_325asbulk)
 ## Nested model attempt
 
 We already mentioned that the first attempt to model the nested intermediate fraction using fast pool predictions of the 325-as-bulk in a subsequent 3-pool system, did not give good fits.
-So next, we attempted to model the intermediate fraction using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows:
+So next, we attempted to model the intermediate fraction (script available [here](https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/3pool.R)) using fast pool predictions of the 325-as-slow in a subsequent 3-pool system as follows:
 (1) The modeled fast pool \Delta $^{14}$C values from the 325-as-slow system, were used as "observed" fast-pool values. 
 (2) Observed intermediate pool carbon stocks were calculated as the difference between 325-stable carbon and 400-stable carbon stocks. 
 (3) The intermediate pool \Delta $^{14}$C values are strictly modeled.
