@@ -9,9 +9,9 @@ Teneille's project repository is available on Github at [this link](https://gith
 
 ## Overview
 
-Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were samples from 1957 - 2019. 
+Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. 
 Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-\deg C and 400-\deg C stable). 
-Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined plant-derived carbon inputs were estimated.
+Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.
 
 ## Simple two-pool models
 
@@ -20,7 +20,7 @@ We fit two-pool models (script available [here](https://github.com/Teneille97/ne
 **Key points**
 
 -   Because the 325-stable pool has technically already lost the faster-cycling pool that was initially combusted, we see over-predictions of the fractions to compensate for this "missing carbon".
--   The observed \Delta $^{14}$C of bulk soil remains constant despite the predicted increase that was predicted during the atmospheric spike in bomb carbon; this means that very little new carbon was incorporated into soil organic matter, potentially due to erosion and/ or management practices such as tillage or residue removals.
+-   The observed \Delta $^{14}$C of bulk soil remains constant despite the increase that was predicted during the atmospheric spike in bomb carbon; this means that very little new carbon was incorporated into soil organic matter, potentially due to erosion and/ or management practices such as tillage or residue removals.
 
 ```{r}
 #| echo: false
