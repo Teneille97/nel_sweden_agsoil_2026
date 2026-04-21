@@ -62,7 +62,7 @@ summary_df <- all_data %>%
 bulk <- subset(summary_df, Temperature...C. == "Soil")
 pool_325 <- subset(summary_df, Temperature...C. == "325")
 pool_400<- subset(summary_df, Temperature...C. == "400")
-  
+
 
 Cobs_bulk <- data.frame(Year = bulk$Year, Ct = bulk$C_stocks_mean, Ct_sd = bulk$C_stocks_sd)
 C14obs_bulk <- data.frame(Year = bulk$Year, C14t = bulk$d14C_mean, C14t_sd = bulk$d14C_sd)
@@ -70,27 +70,32 @@ Cobs_325 <- data.frame(Year = pool_325$Year, Ct_325 = pool_325$C_stocks_mean, Ct
 Cobs_slow <- data.frame(Year = pool_400$Year, Ct_slow = pool_400$C_stocks_mean, Ct_slow_sd = pool_400$C_stocks_sd)
 C14obs_slow <- data.frame(Year = pool_400$Year, C14t_slow = pool_400$d14C_mean, C14t_slow_sd = pool_400$d14C_sd)
 Cobs_fast <- data.frame(Year = Cobs_325$Year, Ct_fast = Cobs_bulk$Ct-Cobs_325$Ct_325, Ct_fast_sd = sqrt(bulk$C_stocks_sd^2 + pool_325$C_stocks_sd^2)) # C fast  = C bulk - C 325
+Cobs_inter<-data.frame(Year = Cobs_325$Year, Ct_inter = Cobs_325$Ct_325-Cobs_slow$Ct_slow, Ct_inter_sd = sqrt(Cobs_325$Ct_325_sd^2 + Cobs_slow$Ct_slow_sd^2))
 
-Cobs_bulk$Ct_sd[is.na(Cobs_bulk$Ct_sd)] <- mean(Cobs_bulk$Ct_sd, na.rm = TRUE)
+#remove NA sd values
+Cobs_bulk$Ct_sd[is.na(Cobs_bulk$Ct_sd)] <- mean(Cobs_bulk$Ct_sd, na.rm = TRUE) 
 C14obs_bulk$C14t_sd[is.na(C14obs_bulk$C14t_sd)] <- mean(C14obs_bulk$C14t_sd, na.rm = TRUE)
 Cobs_fast$Ct_fast_sd[is.na(Cobs_fast$Ct_fast_sd)] <- mean(Cobs_fast$Ct_fast_sd, na.rm = TRUE)
 C14obs_slow$C14t_slow_sd[is.na(C14obs_slow$C14t_slow_sd)] <- mean(C14obs_slow$C14t_slow_sd, na.rm = TRUE)
+Cobs_inter$Ct_inter_sd[is.na(Cobs_inter$Ct_inter_sd)] <- mean(Cobs_inter$Ct_inter_sd, na.rm = TRUE)
+Cobs_slow$Ct_slow_sd[is.na(Cobs_slow$Ct_slow_sd)] <- mean(Cobs_slow$Ct_slow_sd, na.rm = TRUE)
 
 yr <- seq(1957, 2019, by = 1/12)
 C0_bulk <- mean(Cobs_bulk[Cobs_bulk$Year==1957,]$Ct)
-C0_fast <- mean(Cobs_fast[Cobs_fast$Year==1957,]$Ct_fast)
+C0_fast <- mean(Cobs_fast[Cobs_bulk$Year==1957,]$Ct_fast)
 C0_400 <- mean(Cobs_slow[Cobs_slow$Year==1957,]$Ct_slow)
 F0_400 <- mean(C14obs_slow[C14obs_slow$Year==1957,]$C14t_slow)
 F0_bulk <- mean(C14obs_bulk[C14obs_bulk$Year==1957,]$C14t) 
 
-run_mod <- function(pars){
-  mod<-TwopSeriesModel14(
+run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32
+  mod<-ThreepSeriesModel14(
     t = yr,
-    ks = pars[1:2],
-    C0 = c(C0_fast, C0_400),
-    F0_Delta14C = c(F0_bulk * pars[4], F0_400),
-    In = pars[5],
-    a21 = pars[1] * pars[3],
+    ks = pars[1:3],
+    C0 = c(C0_fast, abs(C0_bulk-C0_fast-C0_400), C0_400),
+    F0_Delta14C = c(F0_bulk + 10, F0_bulk + pars[5], F0_400),
+    In = pars[6],
+    a21 = pars[1] * pars[4],
+    a32 = pars[2] * pars[7],
     inputFc = Atm14C
   )
 
@@ -103,30 +108,33 @@ run_mod <- function(pars){
     Ct = rowSums(Ct_pools),
     C14t = C14t,
     Ct_fast = Ct_pools[,1],
-    Ct_slow = Ct_pools[,2],
+    Ct_inter = Ct_pools[,2],
+    Ct_slow = Ct_pools[,3],
     C14t_fast = C14_pools[,1],
-    C14t_slow = C14_pools[,2]
+    C14t_inter = C14_pools[,2],
+    C14t_slow = C14_pools[,3]
   )
   
   return(mod_results)
 }
 
-inipars <- c(0.5, 0.05, 0.1, 0.9, mean_C_inputs*0.5) #kf, ks, alpha 21, F0fb, I
-  
+inipars <- c(0.5,0.05,0.001, 0.1, -50, mean_C_inputs*0.5, 0.1) #kf, ki, ks, alpha 21, F0ib, I, alpha 32
+
 mc <- function(pars){
-  out <- run_mod(pars)
-  Cost1 <- modCost(model = out, obs = Cobs_bulk, x = "Year", err = "Ct_sd", weight = "std")
-  Cost2 <- modCost(model = out, obs = C14obs_bulk, x = "Year", cost = Cost1, err = "C14t_sd", weight = "std")
-  Cost3 <- modCost(model = out, obs = Cobs_fast, x = "Year", cost = Cost2, err = "Ct_fast_sd", weight = "std")
-  return(modCost(model = out, obs = C14obs_slow, x = "Year", cost = Cost3, err = "C14t_slow_sd", weight = "std"))
+  out = run_mod(pars)
+  Cost1 <- modCost(out, Cobs_bulk, x = "Year", err = "Ct_sd")
+  Cost2 <- modCost(out, C14obs_bulk, x = "Year", cost = Cost1, err = "C14t_sd")
+  Cost3 <- modCost(out, Cobs_fast, x = "Year", cost = Cost2, err = "Ct_fast_sd")
+  Cost4 <- modCost(out, Cobs_inter, x = "Year", cost = Cost3, err = "Ct_inter_sd")
+  modCost(out, Cobs_slow, x = "Year", cost = Cost4, err = "Ct_slow_sd")
 }
 
 mFit <- modFit(
   f = mc,
   p = inipars,
   method = "Nelder-Mead",
-  upper = c(2,0.2, 1,3, mean_C_inputs*2), #kf, ki, alpha 21, F0fb, I
-  lower = c(0.1,0.01,0,0,0)
+  upper = c(2,0.2,0.005, 1,0, mean_C_inputs*1.5,1), #kf, ki, ks, alpha 21, F0ib, I, alpha 32
+  lower = c(0.1,0.01,0.0001,0,-160,0,0) 
 )
   
 bestpars <- mFit$par
@@ -137,75 +145,125 @@ stocks_label <- expression(C ~ (g ~ m^{-2}))
 col_bulk <- "black"
 col_fast <- "#1b9e77"
 col_slow <- "#d95f02"
+col_inter <- "#0000FF"
 
 plot_C <- ggplot() +
+  
+  ## --- ribbons FIRST (so they stay behind lines) ---
+  geom_ribbon(data = Cobs_bulk,
+              aes(Year, ymin = Ct - Ct_sd, ymax = Ct + Ct_sd, fill = "Bulk"),
+              alpha = 0.15) +
+  
+  geom_ribbon(data = Cobs_fast,
+              aes(Year, ymin = Ct_fast - Ct_fast_sd, ymax = Ct_fast + Ct_fast_sd, fill = "Fast"),
+              alpha = 0.15) +
+  
+  geom_ribbon(data = Cobs_slow,
+              aes(Year, ymin = Ct_slow - Ct_slow_sd, ymax = Ct_slow + Ct_slow_sd, fill = "Slow"),
+              alpha = 0.15) +
+  
+  geom_ribbon(data = Cobs_inter,
+              aes(Year, ymin = Ct_inter - Ct_inter_sd, ymax = Ct_inter + Ct_inter_sd, fill = "Inter"),
+              alpha = 0.15) +
+  
+  ## --- model lines ---
   geom_line(data = out_best, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
   geom_line(data = out_best, aes(Year, Ct_fast, colour = "Fast"), linetype = "dashed") +
   geom_line(data = out_best, aes(Year, Ct_slow, colour = "Slow"), linetype = "dotted") +
-
+  geom_line(data = out_best, aes(Year, Ct_inter, colour = "Inter"), linetype = "dotted") +
+  
+  ## --- observations ---
   geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
   geom_point(data = Cobs_fast, aes(Year, Ct_fast, colour = "Fast")) +
   geom_point(data = Cobs_slow, aes(Year, Ct_slow, colour = "Slow")) +
-    
+  
+  ## --- scales ---
   scale_colour_manual(
     name = "Pool",
     values = c("Bulk" = col_bulk,
-                 "Fast" = col_fast,
-                 "Slow" = col_slow)
-    ) +
-    
-    ggtitle("C stocks") +
-    ylab(stocks_label) +
-    xlab("Year") +
-    theme_minimal()
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter)
+  ) +
   
+  scale_fill_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter)
+  ) +
   
+  ## --- labels ---
+  ggtitle("C stocks") +
+  ylab(stocks_label) +
+  xlab("Year") +
+  theme_minimal()
+
 plot_C14 <- ggplot() +
-    
-    geom_line(data = out_best, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
-    geom_line(data = out_best, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
-    geom_line(data = out_best, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
-
-    geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
-    geom_point(data = C14obs_slow, aes(Year, C14t_slow, colour = "Slow")) +
-    
-    scale_colour_manual(
-      name = "Pool",
-      values = c("Bulk" = col_bulk,
-                 "Fast" = col_fast,
-                 "Slow" = col_slow)
-    ) +
-    
-    ggtitle(expression(Delta^14*C)) +
-    ylab(Delta14Clabel) +
-    xlab("Year") +
-    theme_minimal()
-
+  
+  ## --- ribbons ---
+  geom_ribbon(data = C14obs_bulk,
+              aes(Year, ymin = C14t - C14t_sd, ymax = C14t + C14t_sd, fill = "Bulk"),
+              alpha = 0.15) +
+  
+  geom_ribbon(data = C14obs_slow,
+              aes(Year, ymin = C14t_slow - C14t_slow_sd, ymax = C14t_slow + C14t_slow_sd, fill = "Slow"),
+              alpha = 0.15) +
+  
+  ## --- model lines ---
+  geom_line(data = out_best, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
+  geom_line(data = out_best, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
+  geom_line(data = out_best, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
+  geom_line(data = out_best, aes(Year, C14t_inter, colour = "Inter"), linetype = "dotted") +
+  
+  ## --- observations ---
+  geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
+  geom_point(data = C14obs_slow, aes(Year, C14t_slow, colour = "Slow")) +
+  
+  ## --- scales ---
+  scale_colour_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter)
+  ) +
+  
+  scale_fill_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter)
+  ) +
+  
+  ## --- labels ---
+  ggtitle(expression(Delta^14*C)) +
+  ylab(Delta14Clabel) +
+  xlab("Year") +
+  theme_minimal()
 
 output_dir <- "plots/allsites/3_pool"
-for (site in names(results)) {
-  
-  res <- results_3p[[site]]
-  
-  # file names
-  file_C <- file.path(output_dir, paste0(site, "_C.png"))
-  file_C14 <- file.path(output_dir, paste0(site, "_C14.png"))
-  
-  # save plots
-  ggsave(filename = file_C, plot = res$plot_C,
-         width = 7, height = 5, dpi = 300, bg = "white")
-  
-  ggsave(filename = file_C14, plot = res$plot_C14,
-         width = 7, height = 5, dpi = 300, bg = "white")
-}
 
-
-for (name in names(results_3p)) {
-  saveRDS(results_3p[[name]]$plot_C,
-          file = file.path(output_dir, paste0(name, "_C.rds")))
+file_C <- file.path(output_dir, "C.png")
+file_C14 <- file.path(output_dir, "C14.png")
   
-  saveRDS(results_3p[[name]]$plot_C14,
-          file = file.path(output_dir, paste0(name, "_14C.rds")))
-}
+ggsave(filename = file_C, plot = plot_C,
+         width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(filename = file_C14, plot = plot_C14,
+         width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(plot_C,
+          file = file.path(output_dir, "C.rds"))
+saveRDS(plot_C14,
+          file = file.path(output_dir, "14C.rds"))
+
+results_3p<-list(
+  pars = bestpars,
+  output = out_best,
+  plot_C = plot_C,
+  plot_C14 = plot_C14
+)
 
 save(results_3p, file = file.path("mod_runs", "results_allsites_3pool.Rdata"))

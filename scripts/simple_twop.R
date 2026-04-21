@@ -271,13 +271,13 @@ save(results, file = file.path("mod_runs", "results_simple_twop.Rdata"))
 var0_M2 <- mFit_M2$var_ms_unweighted
 cov0_M2 <- summary(mFit_M2)$cov.scaled # The covariance matrix can be used for the jump 
 # uncomment to run again 
- MCMC_M2 <- modMCMC(f=mc, p = bestpars_M2, niter = 2500, jump = NULL, var0 = var0_M2, wvar0 = 1) #tnel: jump default is 10% of par value; what is wvar and why is it zero?
- save(MCMC_M2, file="MCMC_M2.RData")
+MCMC_M2 <- modMCMC(f=mc, p = bestpars_M2, niter = 2500, jump = NULL, var0 = var0_M2, wvar0 = 1) #tnel: jump default is 10% of par value; what is wvar and why is it zero?
+save(MCMC_M2, file="MCMC_M2.RData")
 # alternatively load saved run "MCMC_M2.RData"
 parsMCMC_M2<-summary(MCMC_M2)
 # uncomment to map uncertainties of predicted Ct and C14t
- sR_M2=sensRange(func=mf, parInput=MCMC_M2$par) 
- save(sR_M2, file="sR_M2.RData") 
+sR_M2=sensRange(func=mf, parInput=MCMC_M2$par) 
+save(sR_M2, file="sR_M2.RData") 
 # alternatively, load saved run
 # load("sR_M2.RData")
 summarysR_M2<-summary(sR_M2) 
