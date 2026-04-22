@@ -30,8 +30,8 @@ BolinderIn <- c(
   0.259,0.291,0.296,0.288,0.265,0.256
 )
 
-mean_C_inputs <- mean(BolinderIn) * 1000  # g m-2#
-#mean_C_inputs <- 80
+#mean_C_inputs <- mean(BolinderIn) * 1000  # g m-2#
+mean_C_inputs <- 80
 ## Atmospheric radiocarbon ---------------------------------------------------
 
 Atm14C <- Hua2021$NHZone1[,1:2]
@@ -89,7 +89,7 @@ F0_400 <- mean(C14obs_slow[C14obs_slow$Year==1957,]$C14t_slow)
 F0_bulk <- mean(C14obs_bulk[C14obs_bulk$Year==1957,]$C14t) 
 
 # func to run mod
-run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32, alpha 41
+run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, alpha 32, alpha 41, alpha 42
   c14_atm <- BoundFc(Atm14C, format = "Delta14C")
   c14_initial <- ConstFc(
     values = c(F0_bulk + 10, F0_bulk + pars[5], F0_400, F0_bulk + 10), 
@@ -97,15 +97,15 @@ run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32, alpha 41
   )
   A4 <- diag(-c(pars[1:3],0.000000001))
   A4[2,1] <- pars[1]*pars[4]
-  A4[3,2] <- pars[2]*pars[7]
-  A4[4,1] <- pars[1]*pars[8]
-  A4[4,2] <- pars[2]*pars[9]
+  A4[3,2] <- pars[2]*pars[6]
+  A4[4,1] <- pars[1]*pars[7]
+  A4[4,2] <- pars[2]*pars[8]
   mod<-GeneralModel_14(
     t = yr,
     A = A4,
     ivList = c(C0_fast, abs(C0_bulk-C0_fast-C0_400), C0_400, 0),
     initialValF = c14_initial,
-    inputFluxes = c(pars[6],0,0,0),
+    inputFluxes = c(mean_C_inputs,0,0,0),
     inputFc = c14_atm
   )
   
@@ -130,7 +130,7 @@ run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32, alpha 41
   return(mod_results)
 }
 
-inipars <- c(0.1,0.05,0.001, 0.1, -50, mean_C_inputs*0.5, 0.1, 0.005, 0.005) #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41
+inipars <- c(0.1,0.05,0.001, 0.1, -50, 0.1, 0.005, 0.005) #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41
 
 # cost func
 mc <- function(pars){
@@ -147,8 +147,8 @@ mFit <- modFit(
   f = mc,
   p = inipars,
   method = "Nelder-Mead",
-  upper = c(0.5,0.2,0.005, 0.5,0, mean_C_inputs*2,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41, alpha 42
-  lower = c(0.05,0.01,0.0001,0,-160,0,0, 0, 0) 
+  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
 )
 
 bestpars <- mFit$par
@@ -296,9 +296,8 @@ cov0 <- summary(mFit)$cov.scaled #  cov matrix can be used for jump
 
 # run 
 MCMC <- modMCMC(f=mc, p = bestpars, niter = 50000, jump = cov0*0.001, var0 = var0, wvar0 = 1, updatecov = 1000, burninlength =  1000, 
-                upper = c(0.1,0.2,0.01, 0.5,0, mean_C_inputs*2,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41, alpha 42
-                lower = c(0.05,0.005,0.0001,0,-20,0,0, 0, 0)) 
-
+                upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+                lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0)) 
 save(MCMC, file = file.path("mod_runs", "MCMC_allsites_4pools.Rdata"))
 #load(here::here("mod_runs/MCMC_allsites_4pools.Rdata"))
 
@@ -311,19 +310,25 @@ for (p in colnames(MCMC$pars)) {
   plot(density(MCMC$pars[, p]), main = paste("Density of", p))
 }
 
-# performance
-MCMC$naccepted
-MCMC_bestpars<-MCMC$bestpar
-cost_modfit <- mc(bestpars)$model #should be lower, but in this case not
-cost_mcmc   <- mc(MCMC_bestpars)$model  #should be higher
-
 pairs(MCMC,nsample=500) #check inter-dependence of parameters using 500 MCMC runs
 
+# performance
+par(mfrow = c(1, 1))  
+hist(MCMC$SS, breaks = 50)
+mc(mFit$par)
+percentage_accepted<-(100*MCMC$naccepted)/50000
+MCMC_bestpars<-MCMC$bestpar
+cost_modfit <- mc(bestpars)$model #should be lower than mcmc
+cost_mcmc   <- mc(MCMC_bestpars)$model  
+
 # uncertainties
-sR <- sensRange(func = run_mod, parInput = #mcmc pars)
+set.seed(1)
+pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 500), ]
+sR <- sensRange(func = run_mod, parInput = pars_sub)
+
 summarysR <- summary(sR)
-save(sR, file="sR.RData") 
-summarysR<-summary(sR) #this doesnt work somehow
+save(sR, file = file.path("mod_runs", "sR.Rdata"))
+summarysR<-summary(sR) 
 nx2 <- attributes(summarysR)$nx
 CtR2   <- as.data.frame(summarysR[1:nx2, ]) #mean Ct predicted using mcmc pars
 C14tR2 <- as.data.frame(summarysR[(nx2+1):(2*nx2), ]) #mean C14 predicted using mcmc pars
@@ -345,34 +350,28 @@ plot_C_unc <- ggplot() +
   coord_cartesian(ylim = c(0, 6000)) +
   theme_minimal()
 
-meanpars2<-as.numeric(parsMCMC2[1,1:5])
-meanModel2<-TwopSeriesModel14(t=yr,ks=meanpars2[1:2],C0=C0*c(meanpars[4], 1-meanpars[4]),
-                              F0_Delta14C = c(F0*meanpars[5], -200), 
-                              #In=mean(BolinderIn)*1000, 
-                              In=mean(avgYld[,2], na.rm = TRUE)*1.5,
-                              a21=meanpars[1]*meanpars[3], inputFc = Atm14C)
-meanF14C2=getF14(meanModel2)
-meanC2=getC(meanModel2)
-
-
+meanpars<-as.numeric(parsMCMC[1,1:8])
+meanModel<-run_mod(meanpars)
 
 # Age and transit time
 tau=seq(0,500)
-A1=meanModel@mat@map(1970) #tnel: matrix created using arbitrary year, since it remains the same for all years
+A1=meanModel@mat@map(1970) #matrix created using arbitrary year, since remains the same for all years
 A2=meanModel2@mat@map(1970)
 
 #tnel: testing scenarios of min and max turnover rates
-A1min<- -1*diag(parsMCMC[3,1:2]) #tnel: constructs a diag matrix of decomp rates using min p1 and p2
-A1min[2,1]<- abs(parsMCMC[3,3])*parsMCMC[3,2] #tnel: alpha21 was neg.ve - even though we provided restrictions in SoilR model, the MCMC optimization gives a mean from distribution
-A1max<- -1*diag(parsMCMC[4,1:2]) 
-A1max[2,1]<- parsMCMC[4,3]*parsMCMC[4,2] 
+A1min<- -1*diag(parsMCMC[3,1:3]) # diag matrix of decomp rates 
+A1min[2,1]<- abs(parsMCMC[3,1])*parsMCMC[3,4] # alpha21 
+
+A1max<- -1*diag(parsMCMC[4,1:3]) 
+A1max[2,1]<- parsMCMC[4,1]*parsMCMC[4,4] 
+
 A2min<- -1*diag(parsMCMC2[3,1:2])
 A2min[2,1]<- parsMCMC2[3,3]*parsMCMC2[3,2] 
+
 A2max<- -1*diag(parsMCMC2[4,1:2])
 A2max[2,1]<- parsMCMC2[4,3]*parsMCMC2[4,2] 
 
-
-SA1=systemAge(A=A1,u=c(1,0),a=tau) #here u are normalized inputs i.e. simply divided among pools according to system e.g. 0.5, 0.5 could be parallel
+SA1=systemAge(A=A1,u=c(1,0,0,0),a=tau) #here u are normalized inputs i.e. simply divided among pools
 TT1=transitTime(A=A1,u=c(1,0), a=tau, q=c(0.1,0.5,0.9))
 TT1min<-transitTime(A=A1min,u=c(1,0),q=c(0.1,0.5,0.9))
 TT1max<-transitTime(A=A1max,u=c(1,0),q=c(0.1,0.5,0.9))
