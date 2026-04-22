@@ -30,8 +30,8 @@ BolinderIn <- c(
   0.259,0.291,0.296,0.288,0.265,0.256
 )
 
-mean_C_inputs <- mean(BolinderIn) * 1000  # g m-2
-
+mean_C_inputs <- mean(BolinderIn) * 1000  # g m-2#
+#mean_C_inputs <- 80
 ## Atmospheric radiocarbon ---------------------------------------------------
 
 Atm14C <- Hua2021$NHZone1[,1:2]
@@ -83,7 +83,6 @@ Cobs_slow$Ct_slow_sd[is.na(Cobs_slow$Ct_slow_sd)] <- mean(Cobs_slow$Ct_slow_sd, 
 #initial values
 yr <- seq(1957, 2019, by = 1/12)
 C0_bulk <- mean(Cobs_bulk[Cobs_bulk$Year==1957,]$Ct)
-#C0_fast <- mean(Cobs_fast[Cobs_bulk$Year==1957,]$Ct_fast)
 C0_fast <- 5100
 C0_400 <- mean(Cobs_slow[Cobs_slow$Year==1957,]$Ct_slow)
 F0_400 <- mean(C14obs_slow[C14obs_slow$Year==1957,]$C14t_slow)
@@ -100,6 +99,7 @@ run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32, alpha 41
   A4[2,1] <- pars[1]*pars[4]
   A4[3,2] <- pars[2]*pars[7]
   A4[4,1] <- pars[1]*pars[8]
+  A4[4,2] <- pars[2]*pars[9]
   mod<-GeneralModel_14(
     t = yr,
     A = A4,
@@ -130,7 +130,7 @@ run_mod <- function(pars){ #kf, ki, ks, alpha 21, +F0b=Fi, I, alpha 32, alpha 41
   return(mod_results)
 }
 
-inipars <- c(0.1,0.05,0.001, 0.1, -50, mean_C_inputs*0.5, 0.1, 0.005) #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41
+inipars <- c(0.1,0.05,0.001, 0.1, -50, mean_C_inputs*0.5, 0.1, 0.005, 0.005) #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41
 
 # cost func
 mc <- function(pars){
@@ -147,8 +147,8 @@ mFit <- modFit(
   f = mc,
   p = inipars,
   method = "Nelder-Mead",
-  upper = c(0.5,0.2,0.005, 0.5,0, mean_C_inputs*2,1, 0.01), #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41
-  lower = c(0.05,0.01,0.0001,0,-160,0,0, 0) 
+  upper = c(0.5,0.2,0.005, 0.5,0, mean_C_inputs*2,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41, alpha 42
+  lower = c(0.05,0.01,0.0001,0,-160,0,0, 0, 0) 
 )
 
 bestpars <- mFit$par
@@ -293,35 +293,57 @@ save(results_4p, file = file.path("mod_runs", "results_allsites_4pool.Rdata"))
 
 var0 <- mFit$var_ms_unweighted
 cov0 <- summary(mFit)$cov.scaled #  cov matrix can be used for jump 
-# uncomment to run again 
-MCMC_M2 <- modMCMC(f=mc, p = bestpars_M2, niter = 2500, jump = cov0, var0 = var0, wvar0 = 1) 
-save(MCMC_M2, file="MCMC_M2.RData")
-# alternatively load saved run "MCMC_M2.RData"
-parsMCMC_M2<-summary(MCMC_M2)
-# uncomment to map uncertainties of predicted Ct and C14t
-sR_M2=sensRange(func=mf, parInput=MCMC_M2$par) 
-save(sR_M2, file="sR_M2.RData") 
-# alternatively, load saved run
-# load("sR_M2.RData")
-summarysR_M2<-summary(sR_M2) 
-nx2_M2<-attributes(summarysR_M2)$nx
-CtR2<-as.data.frame(summarysR_M2[1:nx2_M2,]) # mean is the Ct (g m-2) predicted
-C14tR2<-as.data.frame(summarysR_M2[(nx2_M2+1):(2*nx2_M2),])#mean is the Delta_C14t (per mille) predicted
 
-pairs(MCMC_M2,nsample=500) #check inter-dependence of parameters using 500 MCMC runs
+# run 
+MCMC <- modMCMC(f=mc, p = bestpars, niter = 50000, jump = cov0*0.001, var0 = var0, wvar0 = 1, updatecov = 1000, burninlength =  1000, 
+                upper = c(0.1,0.2,0.01, 0.5,0, mean_C_inputs*2,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, I, alpha 32, alpha 41, alpha 42
+                lower = c(0.05,0.005,0.0001,0,-20,0,0, 0, 0)) 
 
-plot(CtR2[,1:2], type="l", xlab="Year", ylab="C stock", ylim=c(0,6000)) 
-polygon(c(CtR2$x,rev(CtR2$x)), c(CtR2$Min, rev(CtR2$Max)) ,col=gray(0.8), border="NA")
-polygon(c(CtR2$x,rev(CtR2$x)), c(CtR2$Mean+CtR2$Sd, rev(CtR2$Mean-CtR2$Sd)) ,col=gray(0.5), border="NA")
-lines(CtR2[,1:2])
-points(Cobs,pch=20)
+save(MCMC, file = file.path("mod_runs", "MCMC_allsites_4pools.Rdata"))
+#load(here::here("mod_runs/MCMC_allsites_4pools.Rdata"))
 
-plot(C14tR2[,1:2], type="l", xlim=c(1950,2020), ylim=c(-120,400), ylab=expression(paste(Delta^14,"C ","(\u2030)")),xlab="Years")
-polygon(c(C14tR2$x,rev(C14tR2$x)), c(C14tR2$Min, rev(C14tR2$Max)) ,col=gray(0.8), border="NA")
-polygon(c(C14tR2$x,rev(C14tR2$x)), c(C14tR2$Mean+C14tR2$Sd, rev(C14tR2$Mean-C14tR2$Sd)) ,col=gray(0.5), border="NA")
-lines(C14tR2[,1:2])
-points(C14obs, pch=20)
-lines(Atm14C,col=4)
+# view distribution
+parsMCMC<-summary(MCMC)
+plot(MCMC)
+
+par(mfrow = c(3, 3))  
+for (p in colnames(MCMC$pars)) {
+  plot(density(MCMC$pars[, p]), main = paste("Density of", p))
+}
+
+# performance
+MCMC$naccepted
+MCMC_bestpars<-MCMC$bestpar
+cost_modfit <- mc(bestpars)$model #should be lower, but in this case not
+cost_mcmc   <- mc(MCMC_bestpars)$model  #should be higher
+
+pairs(MCMC,nsample=500) #check inter-dependence of parameters using 500 MCMC runs
+
+# uncertainties
+sR <- sensRange(func = run_mod, parInput = #mcmc pars)
+summarysR <- summary(sR)
+save(sR, file="sR.RData") 
+summarysR<-summary(sR) #this doesnt work somehow
+nx2 <- attributes(summarysR)$nx
+CtR2   <- as.data.frame(summarysR[1:nx2, ]) #mean Ct predicted using mcmc pars
+C14tR2 <- as.data.frame(summarysR[(nx2+1):(2*nx2), ]) #mean C14 predicted using mcmc pars
+
+plot_C_unc <- ggplot() +
+  geom_ribbon(data = CtR2,
+              aes(x = x, ymin = Min, ymax = Max),
+              fill = "grey80") +
+    geom_ribbon(data = CtR2,
+              aes(x = x, ymin = Mean - Sd, ymax = Mean + Sd),
+              fill = "grey50") +
+    geom_line(data = CtR2, #mean line
+            aes(x = x, y = Mean),
+            linewidth = 1) +
+  geom_point(data = Cobs_bulk,
+             aes(x = Year, y = Ct),
+             shape = 20) +
+  labs(x = "Year", y = "C stock") +
+  coord_cartesian(ylim = c(0, 6000)) +
+  theme_minimal()
 
 meanpars2<-as.numeric(parsMCMC2[1,1:5])
 meanModel2<-TwopSeriesModel14(t=yr,ks=meanpars2[1:2],C0=C0*c(meanpars[4], 1-meanpars[4]),
