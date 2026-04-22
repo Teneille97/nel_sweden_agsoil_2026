@@ -158,9 +158,9 @@ stocks_label <- expression(C ~ (g ~ m^{-2}))
 
 col_bulk <- "black"
 col_fast <- "#1b9e77"
-col_slow <- "#d95f02"
+col_slow <- "#BF40BF"
 col_inter <- "#0000FF"
-col_loss <- "#FFEA00"
+col_loss <- "#FF0000"
 
 ## plots
 plot_C <- ggplot() +
@@ -288,7 +288,8 @@ results_4p<-list(
 
 save(results_4p, file = file.path("mod_runs", "results_allsites_4pool.Rdata"))
 #load(here::here("mod_runs/results_allsites_4pool.Rdata"))
-
+#out_best<-results_4p$output
+#bestpars<-results_4p$pars
 ## MCMC
 
 var0 <- mFit$var_ms_unweighted
@@ -324,137 +325,216 @@ cost_mcmc   <- mc(MCMC_bestpars)$model
 # uncertainties
 set.seed(1)
 pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 500), ]
-sR <- sensRange(func = run_mod, parInput = pars_sub)
 
-summarysR <- summary(sR)
-save(sR, file = file.path("mod_runs", "sR.Rdata"))
-summarysR<-summary(sR) 
-nx2 <- attributes(summarysR)$nx
-CtR2   <- as.data.frame(summarysR[1:nx2, ]) #mean Ct predicted using mcmc pars
-C14tR2 <- as.data.frame(summarysR[(nx2+1):(2*nx2), ]) #mean C14 predicted using mcmc pars
+runs <- lapply(1:nrow(pars_sub), function(i) run_mod(pars_sub[i, ]))
+save(runs, file = file.path("mod_runs", "runs.Rdata"))
+#load(here::here("mod_runs/runs.Rdata"))
 
-plot_C_unc <- ggplot() +
-  geom_ribbon(data = CtR2,
-              aes(x = x, ymin = Min, ymax = Max),
-              fill = "grey80") +
-    geom_ribbon(data = CtR2,
-              aes(x = x, ymin = Mean - Sd, ymax = Mean + Sd),
-              fill = "grey50") +
-    geom_line(data = CtR2, #mean line
-            aes(x = x, y = Mean),
-            linewidth = 1) +
-  geom_point(data = Cobs_bulk,
-             aes(x = Year, y = Ct),
-             shape = 20) +
-  labs(x = "Year", y = "C stock") +
-  coord_cartesian(ylim = c(0, 6000)) +
+
+# convert to array-like structure
+extract_var <- function(var){
+  sapply(runs, function(x) x[[var]])
+}
+
+vars <- c("Ct","Ct_fast","Ct_slow","Ct_inter", "Ct_loss",
+          "C14t","C14t_fast","C14t_slow","C14t_inter", "C14t_loss")
+
+unc_list <- lapply(vars, function(v){
+  mat <- extract_var(v)
+  
+  data.frame(
+    Year = runs[[1]]$Year,
+    var = v,
+    # Use na.rm = TRUE to skip the failed runs
+    Mean = rowMeans(mat, na.rm = TRUE),
+    Low  = apply(mat, 1, quantile, 0.025, na.rm = TRUE),
+    High = apply(mat, 1, quantile, 0.975, na.rm = TRUE)
+  )
+})
+
+unc_df <- do.call(rbind, unc_list)
+
+# var names for plotting
+unc_df$Pool <- dplyr::case_when(
+  unc_df$var == "Ct" ~ "Bulk",
+  unc_df$var == "Ct_fast" ~ "Fast",
+  unc_df$var == "Ct_slow" ~ "Slow",
+  unc_df$var == "Ct_inter" ~ "Inter",
+  unc_df$var == "Ct_loss" ~ "Loss",
+  unc_df$var == "C14t" ~ "Bulk",
+  unc_df$var == "C14t_fast" ~ "Fast",
+  unc_df$var == "C14t_slow" ~ "Slow",
+  unc_df$var == "C14t_inter" ~ "Inter",
+  unc_df$var == "C14t_loss" ~ "Loss"
+)
+unc_C    <- subset(unc_df, grepl("^Ct", var))
+unc_C14  <- subset(unc_df, grepl("^C14t", var))
+
+# C stocks plot final
+plot_C_final <- ggplot() +
+  
+  ## --- MCMC ribbons (model uncertainty) ---
+  geom_ribbon(data = unc_C,
+              aes(x = Year, ymin = Low, ymax = High, fill = Pool),
+              alpha = 0.2) +
+  
+  ## --- model lines ---
+  geom_line(data = out_best, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
+  geom_line(data = out_best, aes(Year, Ct_fast, colour = "Fast"), linetype = "dashed") +
+  geom_line(data = out_best, aes(Year, Ct_slow, colour = "Slow"), linetype = "dotted") +
+  geom_line(data = out_best, aes(Year, Ct_inter, colour = "Inter"), linetype = "dotdash") +
+  geom_line(data = out_best, aes(Year, Ct_loss, colour = "Loss"), linetype = "dotted") +
+  
+  ## --- observations: points + error bars ---
+  geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
+  geom_errorbar(data = Cobs_bulk,
+                aes(Year, ymin = Ct - Ct_sd, ymax = Ct + Ct_sd, colour = "Bulk"),
+                width = 0.5) +
+  
+  geom_point(data = Cobs_fast, aes(Year, Ct_fast, colour = "Fast")) +
+  geom_errorbar(data = Cobs_fast,
+                aes(Year, ymin = Ct_fast - Ct_fast_sd, ymax = Ct_fast + Ct_fast_sd, colour = "Fast"),
+                width = 0.5) +
+  
+  geom_point(data = Cobs_slow, aes(Year, Ct_slow, colour = "Slow")) +
+  geom_errorbar(data = Cobs_slow,
+                aes(Year, ymin = Ct_slow - Ct_slow_sd, ymax = Ct_slow + Ct_slow_sd, colour = "Slow"),
+                width = 0.5) +
+  
+  geom_point(data = Cobs_inter, aes(Year, Ct_inter, colour = "Inter")) +
+  geom_errorbar(data = Cobs_inter,
+                aes(Year, ymin = Ct_inter - Ct_inter_sd, ymax = Ct_inter + Ct_inter_sd, colour = "Inter"),
+                width = 0.5) +
+  
+  ## --- scales ---
+  scale_colour_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss)
+  ) +
+  
+  scale_fill_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss)
+  ) +
+  
+  ggtitle("C stocks") +
+  ylab(stocks_label) +
+  xlab("Year") +
   theme_minimal()
 
-meanpars<-as.numeric(parsMCMC[1,1:8])
-meanModel<-run_mod(meanpars)
+# 14C plot final
+
+plot_C14_final <- ggplot() +
+  
+  ## --- MCMC ribbons ---
+  geom_ribbon(data = unc_C14,
+              aes(x = Year, ymin = Low, ymax = High, fill = Pool),
+              alpha = 0.2) +
+  
+  ## --- model lines ---
+  geom_line(data = out_best, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
+  geom_line(data = out_best, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
+  geom_line(data = out_best, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
+  geom_line(data = out_best, aes(Year, C14t_inter, colour = "Inter"), linetype = "dotdash") +
+  geom_line(data = out_best, aes(Year, C14t_loss, colour = "Loss"), linetype = "dotted") +
+  
+  ## --- observations ---
+  geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
+  geom_errorbar(data = C14obs_bulk,
+                aes(Year, ymin = C14t - C14t_sd, ymax = C14t + C14t_sd, colour = "Bulk"),
+                width = 0.5) +
+  
+  geom_point(data = C14obs_slow, aes(Year, C14t_slow, colour = "Slow")) +
+  geom_errorbar(data = C14obs_slow,
+                aes(Year, ymin = C14t_slow - C14t_slow_sd, ymax = C14t_slow + C14t_slow_sd, colour = "Slow"),
+                width = 0.5) +
+  
+  ## --- scales ---
+  scale_colour_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss)
+  ) +
+  
+  scale_fill_manual(
+    name = "Pool",
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss)
+  ) +
+  
+  ggtitle(expression(Delta^14*C)) +
+  ylab(Delta14Clabel) +
+  xlab("Year") +
+  theme_minimal()
+
+# save plots
+output_dir <- "plots/allsites/4_pool"
+
+file_C_final <- file.path(output_dir, "C_final.png")
+file_C14_final <- file.path(output_dir, "C14_final.png")
+
+ggsave(filename = file_C_final, plot = plot_C_final,
+       width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(filename = file_C14_final, plot = plot_C14_final,
+       width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(plot_C_final,
+        file = file.path(output_dir, "C.rds"))
+saveRDS(plot_C14_final,
+        file = file.path(output_dir, "14C.rds"))
+
 
 # Age and transit time
+meanpars<-as.numeric(parsMCMC[1,1:8]) # mean 
+minpars<-as.numeric(parsMCMC[3,1:8]) # min
+maxpars<-as.numeric(parsMCMC[4,1:8]) # max
+
+#A_mean <- diag(-c(meanpars[1:3],0.000000001)) #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+A_mean <- diag(-c(meanpars[1:3])) # the loss pool has infinite age because negligible turnover
+A_mean[2,1] <- meanpars[1]*meanpars[4]
+A_mean[3,2] <- meanpars[2]*meanpars[6]
+#A_mean[4,1] <- meanpars[1]*meanpars[7]
+#A_mean[4,2] <- meanpars[2]*meanpars[8]
+
 tau=seq(0,500)
-A1=meanModel@mat@map(1970) #matrix created using arbitrary year, since remains the same for all years
-A2=meanModel2@mat@map(1970)
 
-#tnel: testing scenarios of min and max turnover rates
-A1min<- -1*diag(parsMCMC[3,1:3]) # diag matrix of decomp rates 
-A1min[2,1]<- abs(parsMCMC[3,1])*parsMCMC[3,4] # alpha21 
-
-A1max<- -1*diag(parsMCMC[4,1:3]) 
-A1max[2,1]<- parsMCMC[4,1]*parsMCMC[4,4] 
-
-A2min<- -1*diag(parsMCMC2[3,1:2])
-A2min[2,1]<- parsMCMC2[3,3]*parsMCMC2[3,2] 
-
-A2max<- -1*diag(parsMCMC2[4,1:2])
-A2max[2,1]<- parsMCMC2[4,3]*parsMCMC2[4,2] 
-
-SA1=systemAge(A=A1,u=c(1,0,0,0),a=tau) #here u are normalized inputs i.e. simply divided among pools
-TT1=transitTime(A=A1,u=c(1,0), a=tau, q=c(0.1,0.5,0.9))
-TT1min<-transitTime(A=A1min,u=c(1,0),q=c(0.1,0.5,0.9))
-TT1max<-transitTime(A=A1max,u=c(1,0),q=c(0.1,0.5,0.9))
-
-SA2=systemAge(A=A2,u=c(1,0),a=tau)
-TT2=transitTime(A=A2,u=c(1,0), a=tau, q=c(0.1,0.5,0.9))
-TT2min<-transitTime(A=A2min,u=c(1,0),q=c(0.1,0.5,0.9))
-TT2max<-transitTime(A=A2max,u=c(1,0),q=c(0.1,0.5,0.9))
-
-In=data.frame(avgYld[,1],avgYld[,2]*bestpars[4]) #tnel: In makes a df of variable inputs, where bestpars[4] = gamma yield to inputs
-
-pdf("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Teneille UAntwerp/Literature/carbon persistence/spohn 2023/code spohn 2023/Figures/Fig2.pdf", encoding = 'WinAnsi.enc', width=7.5*sqrt(2), height=7.5)
-par(mfrow=c(2,2), mar=c(4,4.5,1,1), cex.lab=1.2)
-#plot(avgYld$Year, avgYld$Yield*2,type="o", xlab="Calendar year", ylab=expression(paste("Mean yields [g DW ", m^-2, " y", r^-1, "]" )), xlim=c(1937,2022))
-plot(In, type="b", ylim=c(0,700), xlab="Calendar year", ylab=expression(paste("Carbon inputs [g C ", m^-2, " y", r^-1,"]")), col=rgb(0,0,1), pch=20)
-#abline(h=mean(BolinderIn)*1000, col=2)
-abline(h=mean(avgYld[,2], na.rm = TRUE)*1.5, col=rgb(0,1,0))
-legend("bottomright", c("Variable inputs predicted by the model", "Constant inputs from Bolinder et al. (2012)"), lty=1, 
-       col=c(rgb(0,0,1), rgb(0,1,0)), bty="n")
-legend("topleft", "a", cex=1.2, text.font=2, bty="n")
-
-par(mar=c(4,4.5,1,1))
-plot(C14tR[,1:2],type="l",ylim=c(-200,400), xlab="Calendar year", ylab=expression(paste(Delta^14,"C [\U2030]")), xlim=c(1950,2022))
-polygon(c(C14tR$x,rev(C14tR$x)), c(C14tR$Min, rev(C14tR$Max)) ,col=rgb(0,0,1, alpha=0.3), border="NA") #tnel: part of plotting sd
-polygon(c(C14tR$x,rev(C14tR$x)), c(C14tR$Mean+C14tR$Sd, rev(C14tR$Mean-C14tR$Sd)) ,col=rgb(0,0,1,alpha=0.5), border="NA")
-lines(C14tR[,1:2], col=rgb(0,0,1))
-polygon(c(C14tR2$x,rev(C14tR2$x)), c(C14tR2$Min, rev(C14tR2$Max)) ,col=rgb(0,1,0, alpha=0.3), border="NA")
-polygon(c(C14tR2$x,rev(C14tR2$x)), c(C14tR2$Mean+C14tR2$Sd, rev(C14tR2$Mean-C14tR2$Sd)) ,col=rgb(0,1,0, alpha=0.5), border="NA")
-lines(C14tR2[,1:2], col=rgb(0,1,0))
-points(C14obs, pch=20)
-lines(Atm14C)
-legend("topright", c("Measurements", "Model with constant inputs", "Model with variable inputs", "Atmosphere"), 
-       lty=c(NA,1,1,1), pch=c(19, NA, NA, NA), col=c(1,rgb(0,1,0), rgb(0,0,1),1), bty="n")
-legend("topleft", "b", cex=1.2, text.font=2, bty="n")
-
-matplot(yr,C1,type="l",col=rgb(0,0,1),lty=2:3, lwd=2,ylim=c(0,10000), xlim=c(1966,2022), xlab="Calendar year",
-        ylab=expression(paste("Carbon stock [g C ", m^-2, "]")))
-polygon(c(CtR$x,rev(CtR$x)), c(CtR$Min, rev(CtR$Max)) ,col=rgb(0,0,1, alpha=0.3), border="NA")
-polygon(c(CtR$x,rev(CtR$x)), c(CtR$Mean+CtR$Sd, rev(CtR$Mean-CtR$Sd)) ,col=rgb(0,0,1, alpha=0.5), border="NA")
-lines(CtR[,1:2], col=rgb(0,0,1))
-matlines(yr, C2, col=rgb(0,1,0), lty=2:3, lwd=2)
-polygon(c(CtR2$x,rev(CtR2$x)), c(CtR2$Min, rev(CtR2$Max)) ,col=rgb(0,1,0, alpha=0.3), border="NA")
-polygon(c(CtR2$x,rev(CtR2$x)), c(CtR2$Mean+CtR2$Sd, rev(CtR2$Mean-CtR2$Sd)) ,col=rgb(0,1,0, alpha=0.5), border="NA")
-lines(CtR2[,1:2], col=rgb(0,1,0))
-points(Cobs, pch=20)
-legend("top", c("Measurements", "TOC, constant inputs", "Fast pool", "Slow pool"), lty=c(NA,1,2,3), 
-       pch=c(19, NA, NA, NA), col=c(1,rep(rgb(0,1,0),3)), bty="n")
-legend("topright", c("TOC, variable inputs", "Fast pool", "Slow pool"), lty=c(1,2,3), 
-       col=c(rep(rgb(0,0,1),3)), bty="n")
-legend("topleft", "c", cex=1.2, text.font=2, bty="n")
-
-plot(tau,log(TT1$transitTimeDensity), type="l", xlim=c(0,200), xlab="Transit time (yr)", ylab="Log probability density", col=rgb(0,0,1))
-abline(v=TT1$meanTransitTime, lty=2, col=rgb(0,0,1))
-#abline(v=TT1$quantiles[2],lty=3, col=4)
-lines(tau, log(TT2$transitTimeDensity), col=rgb(0,1,0))
-abline(v=TT2$meanTransitTime, lty=2, col=rgb(0,1,0))
-#abline(v=TT2$quantiles[2],lty=3, col=2)
-legend(x=60,y=-4,c("Transit time distribution, variable inputs", paste("Mean transit time = ", round(TT1$meanTransitTime,1), " yr"))
-       ,lty=1:3, col=rgb(0,0,1), bty="n")
-legend(x=60,y=-6,c("Transit time distribution, constant inputs", paste("Mean transit time = ", round(TT2$meanTransitTime,1), " yr"))
-       ,lty=1:3, col=rgb(0,1,0), bty="n")
-legend(x=5,y=-1, "d", cex=1.2, text.font=2, bty="n")
-par(mfrow=c(1,1))
-dev.off()
+SA=systemAge(A=A_mean,u=c(1,0,0),a=tau) #here u are normalized inputs i.e. simply divided among pools
+SA$meanSystemAge
+par(mfrow = c(1, 1))  
+plot(SA$systemAgeDensity)
+SA$meanPoolAge
+TT=transitTime(A=A_mean,u=c(1,0,0), a=tau, q=c(0.1,0.5,0.9))
+plot(TT$transitTimeDensity)
 
 
-data.frame(Parameter=c("kf", "ks", "alpha_sf", "gamma", "beta"), 
-           Model1=paste(round(bestpars[1:5], 3), "+-", round(parsMCMC[2,1:5], 3)), #tnel: note here the best pars, not the mean pars, are reported with the MCMC uncertainty
-           Model2=paste(c(round(bestpars2[1:3], 3), NA, round(bestpars2[4], 3)), "+-", c(round(parsMCMC2[2,1:3],3), NA, round(parsMCMC2[2,4], 3)))
-)
+#A_min <- diag(-c(minpars[1:3],0.000000001))
+A_min <- diag(-c(minpars[1:3]))
+A_min[2,1] <- minpars[1]*minpars[4]
+A_min[3,2] <- minpars[2]*minpars[6]
+#A_min[4,1] <- minpars[1]*minpars[7]
+#A_min[4,2] <- minpars[2]*minpars[8]
 
-paste("Mean TT (uncertainty): ",round(TT1$meanTransitTime, 2), "(", round(TT1max$meanTransitTime, 2), "--", round(TT1min$meanTransitTime, 2),")")
-paste("Mean TT (uncertainty): ",round(TT2$meanTransitTime, 2), "(", round(TT2max$meanTransitTime, 2), "--", round(TT2min$meanTransitTime, 2),")")
+TTmin<-transitTime(A=A_min,u=c(1,0,0),q=c(0.1,0.5,0.9))
 
-paste("Median TT (uncertainty): ",round(TT1$quantiles[2], 2), "(", round(TT1max$quantiles[2], 2), "--", round(TT1min$quantiles[2], 2),")")
-paste("Median TT (uncertainty): ",round(TT2$quantiles[2], 2), "(", round(TT2max$quantiles[2], 2), "--", round(TT2min$quantiles[2], 2),")")
+#A_max <- diag(-c(maxpars[1:3],0.000000001))
+A_max <- diag(-c(maxpars[1:3]))
+A_max[2,1] <- maxpars[1]*maxpars[4]
+A_max[3,2] <- maxpars[2]*maxpars[6]
+#A_max[4,1] <- maxpars[1]*maxpars[7]
+#A_max[4,2] <- maxpars[2]*maxpars[8]
 
-round(TT1$quantiles, 2) #tnel: just making extraction easy for table
-round(TT1min$meanTransitTime, 2)
-round(TT1min$quantiles, 2)
-round(TT1max$meanTransitTime, 2)
-round(TT1max$quantiles, 2)
-
-round(TT2$meanTransitTime, 2)
-round(TT2$quantiles, 2)
-
+TTmax<-transitTime(A=A_min,u=c(1,0,0),q=c(0.1,0.5,0.9))
