@@ -143,14 +143,16 @@ mc <- function(pars){
   modCost(out, Cobs_slow, x = "Year", cost = Cost4, err = "Ct_slow_sd")
 }
 
+
 #fit mod
 mFit <- modFit(
   f = mc,
   p = inipars,
   method = "Nelder-Mead",
-  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
+  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
 )
+
 
 bestpars <- mFit$par
 out_best <- run_mod(bestpars)
@@ -406,9 +408,20 @@ unc_C14  <- subset(unc_df, grepl("^C14t", var))
 
 # C stocks plot final
 #### run mFit using MCMC pars
+
+# first need to redefine upper and lower as that used for MCMC 
+mFit <- modFit(
+  f = mc,
+  p = inipars,
+  method = "Nelder-Mead",
+  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
+)
+
+# run mod
 out_best_MCMC<- run_mod(MCMC_bestpars)
 
-
+# plot using predictions made by mcmc
 plot_C_final <- ggplot() +
   
   ## --- MCMC ribbons (model uncertainty) ---
