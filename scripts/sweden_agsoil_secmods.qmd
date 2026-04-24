@@ -9,23 +9,23 @@ Teneille's project repository is available on Github at [this link](https://gith
 
 ## Overview
 
-Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-\deg C and 400-\deg C stable). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.
+Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-$\deg$ C and 400-$\deg$ C stable). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.
 
 ## Four-pool model - parameter optimization
 
-We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 300-$\deg$C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-$\deg$C-stable pool from the 300-$\deg$C-stable pool. 
+We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 300-$^\circ$C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-$^\circ$C-stable pool from the 300-$^\circ$C-stable poolstable pool.
 
-The SoilR  package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model: 
+The SoilR package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model:
 
-• Constant carbon inputs estimated from literature values 
+• Constant carbon inputs estimated from literature values
 
-• Observed bulk and organic fraction carbon stocks 
+• Observed bulk and organic fraction carbon stocks
 
-• Bulk soil radiocarbon measurements 
+• Bulk soil radiocarbon measurements
 
 • Atmospheric radiocarbon data
 
-Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g. decomposition rates and transfer between pools) so that the model matches observed  carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.
+Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g. decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.
 
 **Key points**
 
@@ -37,12 +37,14 @@ The loss pool explains the lack of accumulation of modern atmospheric radiocarbo
 #| message: false
 
 library(here)
+library(FME)
 
-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/convergence_plot.rds")
-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/pairs_plot.rds")
+load("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/mod_runs/MCMC_allsites_4pools.Rdata")
+class(MCMC) <- "modMCMC" 
+plot(MCMC)
+pairs(MCMC,nsample=500) 
 readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/density_plot.rds")
 
-load(here::here("mod_runs/MCMC_allsites_4pools.Rdata"))
 mcmc_bestpars<-MCMC$bestpar
 
 param_names_results_4pool <- c("kf", "ki", "ks", "alpha21", "F0ib", "alpha32", "alpha41", "alpha42")

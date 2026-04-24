@@ -319,9 +319,6 @@ png(file_convergence_plot, width = 10, height = 8, units = "in", res = 300)
 plot(MCMC)
 dev.off()
 
-saveRDS(convergence_plot,
-        file = file.path(output_dir, "convergence_plot.rds"))
-
 # plot densitites
 mcmc_long <- as.data.frame(MCMC$pars) %>%
   pivot_longer(cols = everything(), names_to = "parameter", values_to = "value")
