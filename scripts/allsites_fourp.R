@@ -6,6 +6,7 @@ library(SoilR)
 library(FME)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 
 ## import data
 all_data <- read.csv2(here("csv_files", "LTEnitrogen2.csv"))
@@ -309,14 +310,43 @@ parsMCMC<-summary(MCMC)
 # plot convergence
 convergence_plot<-plot(MCMC) 
 
+output_dir <- "plots/allsites/4_pool"
+file_convergence_plot <- file.path(output_dir, "convergence_plot.png")
+
+png(file_convergence_plot, width = 10, height = 8, units = "in", res = 300)
+plot(MCMC)
+dev.off()
+
+saveRDS(convergence_plot,
+        file = file.path(output_dir, "convergence_plot.rds"))
+
 # plot densitites
-par(mfrow = c(3, 3)) 
-for (p in colnames(MCMC$pars)) {
-  plot(density(MCMC$pars[, p]), main = paste("Density of", p))
-}
+mcmc_long <- as.data.frame(MCMC$pars) %>%
+  pivot_longer(cols = everything(), names_to = "parameter", values_to = "value")
+
+density_plot <- ggplot(mcmc_long, aes(x = value)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +
+  facet_wrap(~ parameter, scales = "free") +
+  theme_minimal() +
+  labs(title = "MCMC Parameter Densities", x = "Value", y = "Density")
+
+file_density_plot <- file.path(output_dir, "density_plot.png")
+ggsave(filename = file_density_plot, plot = density_plot,
+       width = 10, height = 8, dpi = 300, bg = "white")
+saveRDS(density_plot,
+        file = file.path(output_dir, "density_plot.rds"))
+
 
 # check inter-dependence of parameters using 500 MCMC runs
-pairs(MCMC,nsample=500) 
+pairs_plot<-pairs(MCMC,nsample=500) 
+
+file_pairs_plot <- file.path(output_dir, "pairs_plot.png")
+
+png(file_pairs_plot, width = 10, height = 8, units = "in", res = 300)
+pairs(MCMC, nsample = 500)
+dev.off()
+saveRDS(pairs_plot,
+        file = file.path(output_dir, "pairs_plot.rds"))
 
 # performance
 par(mfrow = c(1, 1))  
@@ -324,11 +354,11 @@ hist(MCMC$SS, breaks = 50)
 mc(mFit$par)
 percentage_accepted<-(100*MCMC$naccepted)/50000
 MCMC_bestpars<-MCMC$bestpar
-cost_modfit <- mc(bestpars)$model #should be lower than mcmc
+cost_modfit <- mc(bestpars)$model 
 cost_mcmc   <- mc(MCMC_bestpars)$model  
 
 # plots showing 95% credible interval of model outputs given the posterior parameter distribution
-# ie posterior predictive uncertainty conditional on sampled MCMC chains
+# i.e. posterior predictive uncertainty conditional on sampled MCMC chains
 
 set.seed(1)
 pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 500), ]
@@ -336,7 +366,6 @@ pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 500), ]
 runs <- lapply(1:nrow(pars_sub), function(i) run_mod(pars_sub[i, ]))
 #save(runs, file = file.path("mod_runs", "runs.Rdata"))
 load(here::here("mod_runs/runs.Rdata"))
-
 
 # convert to array-like structure
 extract_var <- function(var){
@@ -352,7 +381,6 @@ unc_list <- lapply(vars, function(v){
   data.frame(
     Year = runs[[1]]$Year,
     var = v,
-    # Use na.rm = TRUE to skip the failed runs
     Mean = rowMeans(mat, na.rm = TRUE),
     Low  = apply(mat, 1, quantile, 0.025, na.rm = TRUE),
     High = apply(mat, 1, quantile, 0.975, na.rm = TRUE)
@@ -505,118 +533,9 @@ saveRDS(plot_C14_final,
         file = file.path(output_dir, "14C.rds"))
 
 
-# Age and transit time
-meanpars<-as.numeric(parsMCMC[1,1:8]) # mean 
-minpars<-as.numeric(parsMCMC[3,1:8]) # min
-maxpars<-as.numeric(parsMCMC[4,1:8]) # max
+# Ages and transit times
 
-#A_mean <- diag(-c(meanpars[1:3],0.000000001)) #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-A_mean <- diag(-c(meanpars[1:3])) # the loss pool has infinite age because negligible turnover
-A_mean[2,1] <- meanpars[1]*meanpars[4]
-A_mean[3,2] <- meanpars[2]*meanpars[6]
-#A_mean[4,1] <- meanpars[1]*meanpars[7]
-#A_mean[4,2] <- meanpars[2]*meanpars[8]
-
-tau=seq(0,500)
-
-SA=systemAge(A=A_mean,u=c(1,0,0),a=tau) #here u are normalized inputs i.e. simply divided among pools
-SA$meanSystemAge
-par(mfrow = c(1, 1))  
-plot(SA$systemAgeDensity)
-plot(SA$poolAgeDensity[,1])
-plot(SA$poolAgeDensity[,2])
-plot(SA$poolAgeDensity[,3])
-
-SA$meanPoolAge
-
-TT=transitTime(A=A_mean,u=c(1,0,0), a=tau, q=c(0.1,0.5,0.9)) # system info only; we need to get these for pools?
-plot(TT$transitTimeDensity)
-TT$transitTimeDensity
-
-
-## --- Summarize Age and Transit Time Distribution ---
-
-# Helper function for formatting
-sum_age_tt_fun <- function(vector) {
-  data.frame(
-    mean_age    = mean(vector),
-    mean_age_sd = sd(vector),
-    q05         = as.numeric(quantile(vector, 0.05)),
-    median      = median(vector),
-    q95         = as.numeric(quantile(vector, 0.95))
-  )
-}
-
-# Bind the results from your previously run 'age_dist'
-SA_TT_sum_final <- data.frame(
-  rbind(
-    cbind(Variable = "System",       sum_age_tt_fun(age_dist$system_age)),
-    cbind(Variable = "Fast Pool",    sum_age_tt_fun(age_dist$fast_age)),
-    cbind(Variable = "Intermediate", sum_age_tt_fun(age_dist$inter_age)),
-    cbind(Variable = "Slow Pool",    sum_age_tt_fun(age_dist$slow_age)),
-    cbind(Variable = "Transit Time", sum_age_tt_fun(age_dist$transit_time))
-  )
-)
-
-print(SA_TT_sum_final)
-
-## --- Plot Age Densities 
-
-age_dens_long <- age_df %>%
-  pivot_longer(c(fast, inter, slow), names_to = "Pool", values_to = "Density") %>%
-  mutate(Pool = factor(Pool, levels = c("fast", "inter", "slow"), 
-                       labels = c("Fast (kf)", "Intermediate (ki)", "Slow (ks)")))
-
-plot_age_densities <- ggplot(age_dens_long, aes(x = age, y = Density, color = Pool)) +
-  geom_line(linewidth = 1) +
-  facet_wrap(~Pool, scales = "free") +
-  theme_classic() +
-  scale_color_manual(values = c("#33a02c", "#b2df8a", "#a6cee3")) +
-  labs(x = "Age (years)", y = "Density Function", title = "Pool Age Distributions")
-
-print(plot_age_densities)
-
-## --- Calculate Transit Time Densities for Individual Pools ---
-
-tau <- seq(0, 1000)
-
-# Calculate transit time density for the system
-TT_sys <- transitTime(A = A_med, u = c(1,0,0), a = tau)
-
-# For individual pools
-pool_transit_list <- lapply(1:3, function(i) {
-  u_pool <- rep(0, 3)   # unit vector for the pool
-  u_pool[i] <- 1
-  TT_pool <- transitTime(A = A_med, u = u_pool, a = tau)
-  return(TT_pool$transitTimeDensity)   # transit time starting from pool i
-})
-
-tt_density_df <- data.frame(
-  age = tau,
-  Fast = pool_transit_list[[1]],
-  Intermediate = pool_transit_list[[2]],
-  Slow = pool_transit_list[[3]],
-  System = TT_sys$transitTimeDensity
-)
-
-## plot tt densities
-
-tt_long <- tt_density_df %>%
-  pivot_longer(-age, names_to = "Component", values_to = "Density")
-
-ggplot(tt_long, aes(x = age, y = Density, color = Component)) +
-  geom_line(linewidth = 1) +
-  facet_wrap(~Component, scales = "free_y") +
-  theme_classic() +
-  scale_color_brewer(palette = "Set1") +
-  labs(
-    title = "Transit Time Densities (Exit Time Distributions)",
-    x = "Time in System (years)",
-    y = "Probability Density",
-    caption = "Note: System Transit Time is the weighted average of pool transit times based on inputs (u)."
-  )
-
-# other approach
+# Propagate uncertainty
 
 propagate_age_tt_full <- function(MCMC_pars, n_iter = 5000) {
   
@@ -625,7 +544,6 @@ propagate_age_tt_full <- function(MCMC_pars, n_iter = 5000) {
     fast_age   = numeric(n_iter),
     inter_age  = numeric(n_iter),
     slow_age   = numeric(n_iter),
-    # Transit times for the whole system vs starting from specific pools
     system_tt  = numeric(n_iter),
     fast_tt    = numeric(n_iter),
     inter_tt   = numeric(n_iter),
@@ -652,65 +570,147 @@ propagate_age_tt_full <- function(MCMC_pars, n_iter = 5000) {
   return(results)
 }
 
-# Run the updated propagation
-age_tt_dist <- propagate_age_tt_full(MCMC$pars, n_iter = 5000)
+# Run propagation
+#age_tt_dist <- propagate_age_tt_full(MCMC$pars, n_iter = 5000)
+#save(age_tt_dist, file = file.path("mod_runs", "age_tt_dist.Rdata"))
+load(here::here("mod_runs/age_tt_dist.Rdata"))
+
+# plot age
+
+tau <- 400
+
+age_long <- age_tt_dist %>%
+  select(system_age, fast_age, inter_age, slow_age) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Pool",
+               values_to = "Age") %>%
+  filter(Age <= tau)
+
+age_long$Pool <- recode(age_long$Pool,
+                        system_age = "System",
+                        fast_age   = "Fast",
+                        inter_age  = "Intermediate",
+                        slow_age   = "Slow")
+
+age_density_plot<-ggplot(age_long, aes(x = Age, fill = Pool)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~Pool, scales = "free_y") +
+  xlim(0, tau) +
+  theme_minimal() +
+  labs(title = "Age distributions by pool")
+
+file_age_density_plot <- file.path(output_dir, "age_density_plot.png")
+
+ggsave(filename = file_age_density_plot, plot = age_density_plot,
+       width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(age_density_plot,
+        file = file.path(output_dir, "age_density_plot.rds"))
+
+# transit times
+tt_long <- age_tt_dist %>%
+  select(system_tt, fast_tt, inter_tt, slow_tt) %>%
+  pivot_longer(cols = everything(),
+               names_to = "Pool",
+               values_to = "TransitTime") %>%
+  filter(TransitTime <= tau)
+
+tt_long$Pool <- recode(tt_long$Pool,
+                       system_tt = "System",
+                       fast_tt   = "Fast",
+                       inter_tt  = "Intermediate",
+                       slow_tt   = "Slow")
+
+tt_density_plot <- ggplot(tt_long, aes(x = TransitTime, fill = Pool)) +
+  geom_density(alpha = 0.6) +
+  facet_wrap(~Pool, scales = "free_y") +
+  xlim(0, tau) +
+  theme_minimal() +
+  labs(title = "Transit time distributions by pool")
 
 
-# Calculate densities using median parameters
-tau <- seq(0, 1500)
-# Exit distribution starting from Fast (Pool 1)
-TT_fast  <- transitTime(A = A_med, u = c(1,0,0), a = tau)
-# Exit distribution starting from Inter (Pool 2)
-TT_inter <- transitTime(A = A_med, u = c(0,1,0), a = tau)
-# Exit distribution starting from Slow (Pool 3)
-TT_slow  <- transitTime(A = A_med, u = c(0,0,1), a = tau)
+file_tt_density_plot <- file.path(output_dir, "tt_density_plot.png")
 
-tt_density_df <- data.frame(
-  age = tau,
-  Fast = TT_fast$transitTimeDensity,
-  Intermediate = TT_inter$transitTimeDensity,
-  Slow = TT_slow$transitTimeDensity
+ggsave(filename = file_tt_density_plot, plot = tt_density_plot,
+       width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(tt_density_plot,
+        file = file.path(output_dir, "tt_density_plot.rds"))
+
+
+# summary age and transit times
+sum_age_tt_fun <- function(vector) {
+  data.frame(
+    mean   = mean(vector, na.rm = TRUE),
+    sd     = sd(vector, na.rm = TRUE),
+    q05    = quantile(vector, 0.05, na.rm = TRUE),
+    median = median(vector, na.rm = TRUE),
+    q95    = quantile(vector, 0.95, na.rm = TRUE)
+  )
+}
+SA_summary <- rbind(
+  cbind(Variable = "System Age",       sum_age_tt_fun(age_tt_dist$system_age)),
+  cbind(Variable = "Fast Pool Age",    sum_age_tt_fun(age_tt_dist$fast_age)),
+  cbind(Variable = "Intermediate Age", sum_age_tt_fun(age_tt_dist$inter_age)),
+  cbind(Variable = "Slow Pool Age",    sum_age_tt_fun(age_tt_dist$slow_age))
+)
+TT_summary <- rbind(
+  cbind(Variable = "System Transit Time",       sum_age_tt_fun(age_tt_dist$system_tt)),
+  cbind(Variable = "Fast Pool Transit Time",    sum_age_tt_fun(age_tt_dist$fast_tt)),
+  cbind(Variable = "Intermediate Transit Time", sum_age_tt_fun(age_tt_dist$inter_tt)),
+  cbind(Variable = "Slow Pool Transit Time",    sum_age_tt_fun(age_tt_dist$slow_tt))
+)
+SA_TT_sum_final <- rbind(SA_summary, TT_summary)
+
+SA_TT_sum_final[,-1] <- round(SA_TT_sum_final[,-1], 1)
+SA_TT_sum_final$Variable <- factor(
+  SA_TT_sum_final$Variable,
+  levels = c(
+    "System Age", "Fast Pool Age", "Intermediate Age", "Slow Pool Age",
+    "System Transit Time", "Fast Pool Transit Time",
+    "Intermediate Transit Time", "Slow Pool Transit Time"
+  )
 )
 
-# Plotting
-tt_density_df %>%
-  pivot_longer(-age, names_to = "Starting_Pool", values_to = "Density") %>%
-  ggplot(aes(x = age, y = Density, color = Starting_Pool)) +
-  geom_line(linewidth = 1) +
-  facet_wrap(~Starting_Pool, scales = "free_y") +
-  theme_minimal() +
-  labs(title = "Transit Time Densities by Starting Pool",
-       subtitle = "Probability of exiting the system at time t, given starting pool",
-       x = "Years", y = "Density")
-
+SA_TT_sum_final <- SA_TT_sum_final[order(SA_TT_sum_final$Variable), ]
+print(SA_TT_sum_final)
 
 ## --- Calculate fluxes and stocks for all pools 
 
-# 1. par data
 pf_4ps <- MCMC$pars %>%
-  as.data.frame() %>%
+  as.data.frame()
+
+colnames(pf_4ps) <- c("kf","ki","ks","alpha_fi","x","alpha_is","alpha_fl","alpha_il")
+
+pf_4ps_flux <- pf_4ps %>%
   mutate(
-    C_fast  = mean(unc_C$Mean[unc_C$Pool == "Fast"]),
-    C_inter = mean(unc_C$Mean[unc_C$Pool == "Inter"]),
-    C_slow  = mean(unc_C$Mean[unc_C$Pool == "Slow"]),
-    C_loss  = mean(unc_C$Mean[unc_C$Pool == "Loss"])
-  ) %>%
-  mutate(
-    out_fast = (1 - MCMC$bestpar[4] - MCMC$bestpar[7]) * MCMC$bestpar[1] * C_fast, #respiration
-    trans_fast_to_inter = MCMC$bestpar[4] * MCMC$bestpar[1] * C_fast,
-    trans_fast_to_loss = MCMC$bestpar[7] * MCMC$bestpar[1] * C_fast,
-    out_inter = (1 - MCMC$bestpar[6] - MCMC$bestpar[8]) * MCMC$bestpar[2] * C_inter,
-    trans_inter_to_slow = MCMC$bestpar[6] * MCMC$bestpar[2] * C_inter,
-    trans_inter_to_loss = MCMC$bestpar[8] * MCMC$bestpar[2] * C_inter,
-    out_slow = MCMC$bestpar[3] * C_slow
+    C_fast  = sample(unc_C$Mean[unc_C$Pool == "Fast"],  n(), replace = TRUE),
+    C_inter = sample(unc_C$Mean[unc_C$Pool == "Inter"], n(), replace = TRUE),
+    C_slow  = sample(unc_C$Mean[unc_C$Pool == "Slow"],  n(), replace = TRUE),
+    
+    # Fast pool
+    out_fast = (1 - alpha_fi - alpha_fl) * kf * C_fast,
+    trans_fast_to_inter = alpha_fi * kf * C_fast,
+    trans_fast_to_loss  = alpha_fl * kf * C_fast,
+    
+    # Intermediate pool
+    out_inter = (1 - alpha_is - alpha_il) * ki * C_inter,
+    trans_inter_to_slow = alpha_is * ki * C_inter,
+    trans_inter_to_loss = alpha_il * ki * C_inter,
+    
+    # Slow pool
+    out_slow = ks * C_slow
   )
 
-flux_summary <- pf_4ps %>%
-  summarise(across(starts_with("out") | starts_with("trans"), list(
-    median = ~round(median(.), 2),
-    lci    = ~round(quantile(., 0.05), 2),
-    uci    = ~round(quantile(., 0.95), 2)
-  ))) %>%
-  pivot_longer(everything(), names_to = "Metric", values_to = "Value")
+flux_summary <- pf_4ps_flux %>%
+  summarise(across(starts_with("out") | starts_with("trans"),
+                   list(
+                     median = ~round(median(.), 2),
+                     lci    = ~round(quantile(., 0.05), 2),
+                     uci    = ~round(quantile(., 0.95), 2)
+                   ))) %>%
+  pivot_longer(everything(),
+               names_to = "Metric",
+               values_to = "Value")
 
 print(flux_summary)
