@@ -412,7 +412,7 @@ unc_C14  <- subset(unc_df, grepl("^C14t", var))
 # first need to redefine upper and lower as that used for MCMC 
 mFit <- modFit(
   f = mc,
-  p = inipars,
+  p = MCMC_bestpars,
   method = "Nelder-Mead",
   upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
   lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
@@ -546,9 +546,9 @@ ggsave(filename = file_C14_final, plot = plot_C14_final,
        width = 7, height = 5, dpi = 300, bg = "white")
 
 saveRDS(plot_C_final,
-        file = file.path(output_dir, "C.rds"))
+        file = file.path(output_dir, "C_final.rds"))
 saveRDS(plot_C14_final,
-        file = file.path(output_dir, "14C.rds"))
+        file = file.path(output_dir, "14C_final.rds"))
 
 ### Ages and transit times ###
 

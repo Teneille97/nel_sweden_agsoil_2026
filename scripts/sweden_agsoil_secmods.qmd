@@ -13,16 +13,7 @@ Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soil
 
 ## Four-pool model - parameter optimization
 
-We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and lost carbon. We grouped data by year and calculated averages and uncertainties for carbon stocks and radiocarbon. Then we used temperature fractions to estimate how much carbon belongs to each pool.
-Next, we ran a model using SoilR that simulates how carbon moves between pools and decomposes over time.
-We gave the model:
-•	A constant carbon input
-•	Observed bulk and organic fraction carbon stocks
-•	Bulk soil radiocarbon measurements
-•	Atmospheric radiocarbon data
-Then we fitted the model to the data using optimization (FME), adjusting parameters like decomposition rates and transfer between pools so that the model matches total carbon, carbon in each pool and radiocarbon values
-We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model reproduces both the amount of carbon and its turnover dynamics.
-After fitting our model to the data, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and see which ones also fit the data well. Then we plotted density curves to show likely parameter values, looked at correlations between parameters and checked trace plots to make sure the algorithm converged. We also used samples of these parameter sets to run the model many times, which let us estimate uncertainty in model predictions.
+We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and lost carbon. We grouped data by year and calculated averages and uncertainties for carbon stocks and radiocarbon. Then we used temperature fractions to estimate how much carbon belongs to each pool. Next, we ran a model using SoilR that simulates how carbon moves between pools and decomposes over time. We gave the model: • A constant carbon input • Observed bulk and organic fraction carbon stocks • Bulk soil radiocarbon measurements • Atmospheric radiocarbon data Then we fitted the model to the data using optimization (FME), adjusting parameters like decomposition rates and transfer between pools so that the model matches total carbon, carbon in each pool and radiocarbon values We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model reproduces both the amount of carbon and its turnover dynamics. After fitting our model to the data, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and see which ones also fit the data well. Then we plotted density curves to show likely parameter values, looked at correlations between parameters and checked trace plots to make sure the algorithm converged.
 
 **Key points**
 
@@ -37,21 +28,49 @@ library(here)
 
 readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/convergence_plot.rds")
 readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/pairs_plot.rds")
-
 readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/density_plot.rds")
 
-load(here::here("mod_runs/results_3pool.Rdata"))
-results_3pool<-results_3p
-param_names_results_3pool <- c("kf", "ki", "ks", "alpha21", "F0ib", "In", "alpha32")
-process_results(results_3pool, param_names_results_3pool)
+load(here::here("mod_runs/MCMC_allsites_4pools.Rdata"))
+mcmc_bestpars<-MCMC$bestpar
+
+param_names_results_4pool <- c("kf", "ki", "ks", "alpha21", "F0ib", "alpha32", "alpha41", "alpha42")
+mcmc_pars_df<-data.frame("Par" = param_names_results_4pool, "Value" = mcmc_bestpars)
+print(mcmc_pars_df)
+```
+
+## Modeled radiocarbon and carbon stocks
+
+We used samples of MCMC parameter sets to run the model many times, which let us estimate uncertainty in model predictions.
+
+**Key points** We found low model uncertainty for radiocarbon and carbon stocks.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+library(here)
+
+readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/C_final.rds")
+readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/C14_final.rds")
 
 ```
 
 ## Ages and transit times
 
-We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). We focused only on these three pools and ignored the “loss” pool, because that pool represents carbon leaving the system permanently.
-To capture uncertainty, we took many different parameter combinations from our MCMC results (after removing the unstable early part of the chain) and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and meanystem transit time. We then combined all runs to calculate the range of uncertainty.
+We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). We focused only on these three pools and ignored the “loss” pool, because that pool represents carbon leaving the system permanently. To capture uncertainty, we took many different parameter combinations from our MCMC results (after removing the unstable early part of the chain) and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.
 
 **Key points**
 
 Fast-cycling carbon and overall system transit time are very well constrained, while slower pools have much wider uncertainty.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+library(here)
+
+readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_log_age_tt.rds")
+
+```
