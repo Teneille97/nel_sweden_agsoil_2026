@@ -29,7 +29,7 @@ Then we fitted the model to the data using optimization by a cost function (FME)
 
 **Key points**
 
-The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly
+We obtained clear density peaks and converged modelled values for most parameters. 
 
 ```{r}
 #| echo: false
@@ -56,7 +56,9 @@ print(mcmc_pars_df)
 
 We used samples of MCMC parameter sets to run the model many times, which let us estimate uncertainty in model predictions.
 
-**Key points** We found low model uncertainty for radiocarbon and carbon stocks.
+**Key points** 
+
+The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly. We found low model uncertainty for radiocarbon and carbon stocks.
 
 ```{r}
 #| echo: false
@@ -74,7 +76,7 @@ print(C14_final)
 
 ## Ages and transit times
 
-We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). We focused only on these three pools and ignored the “loss” pool, because that pool represents carbon leaving the system permanently. To capture uncertainty, we took many different parameter combinations from our MCMC results (after removing the unstable early part of the chain) and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.
+We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.
 
 **Key points**
 

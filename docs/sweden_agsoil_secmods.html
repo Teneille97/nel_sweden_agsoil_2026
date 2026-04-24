@@ -117,7 +117,7 @@ window.Quarto = {
 <p>• Atmospheric radiocarbon data</p>
 <p>Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g.&nbsp;decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.</p>
 <p><strong>Key points</strong></p>
-<p>The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly</p>
+<p>We obtained clear density peaks and converged modelled values for most parameters.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -156,7 +156,8 @@ window.Quarto = {
 <section id="modeled-radiocarbon-and-carbon-stocks" class="level2">
 <h2 class="anchored" data-anchor-id="modeled-radiocarbon-and-carbon-stocks">Modeled radiocarbon and carbon stocks</h2>
 <p>We used samples of MCMC parameter sets to run the model many times, which let us estimate uncertainty in model predictions.</p>
-<p><strong>Key points</strong> We found low model uncertainty for radiocarbon and carbon stocks.</p>
+<p><strong>Key points</strong></p>
+<p>The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly. We found low model uncertainty for radiocarbon and carbon stocks.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -176,7 +177,7 @@ window.Quarto = {
 </section>
 <section id="ages-and-transit-times" class="level2">
 <h2 class="anchored" data-anchor-id="ages-and-transit-times">Ages and transit times</h2>
-<p>We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). We focused only on these three pools and ignored the “loss” pool, because that pool represents carbon leaving the system permanently. To capture uncertainty, we took many different parameter combinations from our MCMC results (after removing the unstable early part of the chain) and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.</p>
+<p>We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.</p>
 <p><strong>Key points</strong></p>
 <p>Fast-cycling carbon and overall system transit time are very well constrained, while slower pools have much wider uncertainty.</p>
 <div class="cell">
