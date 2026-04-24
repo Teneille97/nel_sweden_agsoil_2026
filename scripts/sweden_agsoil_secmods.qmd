@@ -13,7 +13,19 @@ Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soil
 
 ## Four-pool model - parameter optimization
 
-We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and lost carbon. We grouped data by year and calculated averages and uncertainties for carbon stocks and radiocarbon. Then we used temperature fractions to estimate how much carbon belongs to each pool. Next, we ran a model using SoilR that simulates how carbon moves between pools and decomposes over time. We gave the model: • A constant carbon input • Observed bulk and organic fraction carbon stocks • Bulk soil radiocarbon measurements • Atmospheric radiocarbon data Then we fitted the model to the data using optimization (FME), adjusting parameters like decomposition rates and transfer between pools so that the model matches total carbon, carbon in each pool and radiocarbon values We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model reproduces both the amount of carbon and its turnover dynamics. After fitting our model to the data, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and see which ones also fit the data well. Then we plotted density curves to show likely parameter values, looked at correlations between parameters and checked trace plots to make sure the algorithm converged.
+We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 300-$\deg$C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-$\deg$C-stable pool from the 300-$\deg$C-stable pool. 
+
+The SoilR  package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model: 
+
+• Constant carbon inputs estimated from literature values 
+
+• Observed bulk and organic fraction carbon stocks 
+
+• Bulk soil radiocarbon measurements 
+
+• Atmospheric radiocarbon data
+
+Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g. decomposition rates and transfer between pools) so that the model matches observed  carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.
 
 **Key points**
 
@@ -50,9 +62,11 @@ We used samples of MCMC parameter sets to run the model many times, which let us
 #| message: false
 
 library(here)
+C_final <- readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/C_final.rds")
+C14_final <- readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/14C_final.rds")
 
-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/C_final.rds")
-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/C14_final.rds")
+print(C_final)
+print(C14_final)
 
 ```
 
@@ -71,6 +85,10 @@ Fast-cycling carbon and overall system transit time are very well constrained, w
 
 library(here)
 
-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_log_age_tt.rds")
+plot_log_age_tt<-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_log_age_tt.rds")
+print(plot_log_age_tt)
+
+load(here::here("mod_runs/summary_table_fmt.Rdata"))
+print(summary_table_fmt)
 
 ```

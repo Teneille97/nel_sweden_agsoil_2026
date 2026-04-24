@@ -145,17 +145,17 @@ mc <- function(pars){
 
 
 #fit mod
-mFit <- modFit(
-  f = mc,
-  p = inipars,
-  method = "Nelder-Mead",
-  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
-)
+#mFit <- modFit(
+ # f = mc,
+#  p = inipars,
+#  method = "Nelder-Mead",
+#  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+#  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
+#)
 
 
-bestpars <- mFit$par
-out_best <- run_mod(bestpars)
+#bestpars <- mFit$par
+#out_best <- run_mod(bestpars)
 Delta14Clabel <- expression(Delta^14*C)
 stocks_label <- expression(C ~ (g ~ m^{-2}))
 
@@ -299,9 +299,9 @@ var0 <- mFit$var_ms_unweighted
 cov0 <- summary(mFit)$cov.scaled #  cov matrix can be used for jump 
 
 # run 
-MCMC <- modMCMC(f=mc, p = bestpars, niter = 50000, jump = cov0*0.001, var0 = var0, wvar0 = 1, updatecov = 1000, burninlength =  1000, 
-                upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-                lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0)) 
+#MCMC <- modMCMC(f=mc, p = bestpars, niter = 50000, jump = cov0*0.001, var0 = var0, wvar0 = 1, updatecov = 1000, burninlength =  1000, 
+#                upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+#                lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0)) 
 #save(MCMC, file = file.path("mod_runs", "MCMC_allsites_4pools.Rdata"))
 load(here::here("mod_runs/MCMC_allsites_4pools.Rdata"))
 
@@ -410,16 +410,18 @@ unc_C14  <- subset(unc_df, grepl("^C14t", var))
 #### run mFit using MCMC pars
 
 # first need to redefine upper and lower as that used for MCMC 
-mFit <- modFit(
-  f = mc,
-  p = MCMC_bestpars,
-  method = "Nelder-Mead",
-  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
-)
+#mFit <- modFit(
+ # f = mc,
+#  p = MCMC_bestpars,
+#  method = "Nelder-Mead",
+#  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+#  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
+#)
 
 # run mod
-out_best_MCMC<- run_mod(MCMC_bestpars)
+#out_best_MCMC<- run_mod(MCMC_bestpars)
+#save(out_best_MCMC, file = file.path("mod_runs", "out_best_MCMC.Rdata"))
+load(here::here("mod_runs/out_best_MCMC.Rdata"))
 
 # plot using predictions made by mcmc
 plot_C_final <- ggplot() +
@@ -596,12 +598,12 @@ get_age_tt_dens <- function(pars, ages){
 
 # run for pars 
 ages <- seq(0, 500, by = 1)
-dens_best <- get_age_tt_dens(bestpars, ages)
+dens_best <- get_age_tt_dens(MCMC_bestpars, ages)
 
 # run for sampled mcmc pars 
-dens_list <- lapply(1:nrow(pars_sub), function(i){
-  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
-})
+#dens_list <- lapply(1:nrow(pars_sub), function(i){
+#  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
+#})
 
 # save(dens_list, file = file.path("mod_runs", "dens_list.Rdata"))
 load(here::here("mod_runs/dens_list.Rdata"))
@@ -665,7 +667,8 @@ summary_table <- do.call(rbind, summary_list)
 summary_table_fmt <- summary_table %>%
   mutate(across(-variable, ~round(., 1)))
 
-summary_table_fmt
+
+save(summary_table_fmt, file = file.path("mod_runs", "summary_table_fmt.Rdata"))
 
 # plot
 plot_age_tt <- ggplot() +
