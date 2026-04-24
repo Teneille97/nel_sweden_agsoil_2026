@@ -148,8 +148,8 @@ mFit <- modFit(
   f = mc,
   p = inipars,
   method = "Nelder-Mead",
-  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
+  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
+  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
 )
 
 bestpars <- mFit$par
@@ -351,7 +351,6 @@ saveRDS(pairs_plot,
 # performance
 par(mfrow = c(1, 1))  
 hist(MCMC$SS, breaks = 50)
-mc(mFit$par)
 percentage_accepted<-(100*MCMC$naccepted)/50000
 MCMC_bestpars<-MCMC$bestpar
 cost_modfit <- mc(bestpars)$model 
@@ -363,7 +362,7 @@ cost_mcmc   <- mc(MCMC_bestpars)$model
 set.seed(1)
 pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 500), ]
 
-runs <- lapply(1:nrow(pars_sub), function(i) run_mod(pars_sub[i, ]))
+#runs <- lapply(1:nrow(pars_sub), function(i) run_mod(pars_sub[i, ]))
 #save(runs, file = file.path("mod_runs", "runs.Rdata"))
 load(here::here("mod_runs/runs.Rdata"))
 
@@ -406,6 +405,10 @@ unc_C    <- subset(unc_df, grepl("^Ct", var))
 unc_C14  <- subset(unc_df, grepl("^C14t", var))
 
 # C stocks plot final
+#### run mFit using MCMC pars
+out_best_MCMC<- run_mod(MCMC_bestpars)
+
+
 plot_C_final <- ggplot() +
   
   ## --- MCMC ribbons (model uncertainty) ---
@@ -414,11 +417,11 @@ plot_C_final <- ggplot() +
               alpha = 0.2) +
   
   ## --- model lines ---
-  geom_line(data = out_best, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
-  geom_line(data = out_best, aes(Year, Ct_fast, colour = "Fast"), linetype = "dashed") +
-  geom_line(data = out_best, aes(Year, Ct_slow, colour = "Slow"), linetype = "dotted") +
-  geom_line(data = out_best, aes(Year, Ct_inter, colour = "Inter"), linetype = "dotdash") +
-  geom_line(data = out_best, aes(Year, Ct_loss, colour = "Loss"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_fast, colour = "Fast"), linetype = "dashed") +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_slow, colour = "Slow"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_inter, colour = "Inter"), linetype = "dotdash") +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_loss, colour = "Loss"), linetype = "dotted") +
   
   ## --- observations: points + error bars ---
   geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
@@ -465,6 +468,8 @@ plot_C_final <- ggplot() +
   xlab("Year") +
   theme_minimal()
 
+
+
 # 14C plot final
 
 plot_C14_final <- ggplot() +
@@ -475,11 +480,11 @@ plot_C14_final <- ggplot() +
               alpha = 0.2) +
   
   ## --- model lines ---
-  geom_line(data = out_best, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
-  geom_line(data = out_best, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
-  geom_line(data = out_best, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
-  geom_line(data = out_best, aes(Year, C14t_inter, colour = "Inter"), linetype = "dotdash") +
-  geom_line(data = out_best, aes(Year, C14t_loss, colour = "Loss"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_inter, colour = "Inter"), linetype = "dotdash") +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_loss, colour = "Loss"), linetype = "dotted") +
   
   ## --- observations ---
   geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
