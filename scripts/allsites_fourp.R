@@ -535,145 +535,6 @@ saveRDS(plot_C14_final,
 
 # Ages and transit times
 
-# Propagate uncertainty
-
-propagate_age_tt_full <- function(MCMC_pars, n_iter = 5000) {
-  
-  results <- data.frame(
-    system_age = numeric(n_iter),
-    fast_age   = numeric(n_iter),
-    inter_age  = numeric(n_iter),
-    slow_age   = numeric(n_iter),
-    system_tt  = numeric(n_iter),
-    fast_tt    = numeric(n_iter),
-    inter_tt   = numeric(n_iter),
-    slow_tt    = numeric(n_iter)
-  )
-  
-  for(i in 1:n_iter) {
-    pars <- MCMC_pars[sample(1:nrow(MCMC_pars), 1), ]
-    A <- build_A(pars)
-    
-    # 1. System/Pool Ages
-    SA <- systemAge(A = A, u = c(1,0,0))
-    results$system_age[i] <- SA$meanSystemAge
-    results$fast_age[i]   <- SA$meanPoolAge[1]
-    results$inter_age[i]  <- SA$meanPoolAge[2]
-    results$slow_age[i]   <- SA$meanPoolAge[3]
-    
-    # 2. Transit Times (Exit times starting from each pool)
-    results$system_tt[i] <- transitTime(A = A, u = c(1,0,0))$meanTransitTime
-    results$fast_tt[i]   <- transitTime(A = A, u = c(1,0,0))$meanTransitTime # Usually same as system if all input enters Fast
-    results$inter_tt[i]  <- transitTime(A = A, u = c(0,1,0))$meanTransitTime
-    results$slow_tt[i]   <- transitTime(A = A, u = c(0,0,1))$meanTransitTime
-  }
-  return(results)
-}
-
-# Run propagation
-#age_tt_dist <- propagate_age_tt_full(MCMC$pars, n_iter = 5000)
-#save(age_tt_dist, file = file.path("mod_runs", "age_tt_dist.Rdata"))
-load(here::here("mod_runs/age_tt_dist.Rdata"))
-
-# plot age
-
-tau <- 400
-
-age_long <- age_tt_dist %>%
-  select(system_age, fast_age, inter_age, slow_age) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Pool",
-               values_to = "Age") %>%
-  filter(Age <= tau)
-
-age_long$Pool <- recode(age_long$Pool,
-                        system_age = "System",
-                        fast_age   = "Fast",
-                        inter_age  = "Intermediate",
-                        slow_age   = "Slow")
-
-age_density_plot<-ggplot(age_long, aes(x = Age, fill = Pool)) +
-  geom_density(alpha = 0.6) +
-  facet_wrap(~Pool, scales = "free_y") +
-  xlim(0, tau) +
-  theme_minimal() +
-  labs(title = "Age distributions by pool")
-
-file_age_density_plot <- file.path(output_dir, "age_density_plot.png")
-
-ggsave(filename = file_age_density_plot, plot = age_density_plot,
-       width = 7, height = 5, dpi = 300, bg = "white")
-
-saveRDS(age_density_plot,
-        file = file.path(output_dir, "age_density_plot.rds"))
-
-# transit times
-tt_long <- age_tt_dist %>%
-  select(system_tt, fast_tt, inter_tt, slow_tt) %>%
-  pivot_longer(cols = everything(),
-               names_to = "Pool",
-               values_to = "TransitTime") %>%
-  filter(TransitTime <= tau)
-
-tt_long$Pool <- recode(tt_long$Pool,
-                       system_tt = "System",
-                       fast_tt   = "Fast",
-                       inter_tt  = "Intermediate",
-                       slow_tt   = "Slow")
-
-tt_density_plot <- ggplot(tt_long, aes(x = TransitTime, fill = Pool)) +
-  geom_density(alpha = 0.6) +
-  facet_wrap(~Pool, scales = "free_y") +
-  xlim(0, tau) +
-  theme_minimal() +
-  labs(title = "Transit time distributions by pool")
-
-
-file_tt_density_plot <- file.path(output_dir, "tt_density_plot.png")
-
-ggsave(filename = file_tt_density_plot, plot = tt_density_plot,
-       width = 7, height = 5, dpi = 300, bg = "white")
-
-saveRDS(tt_density_plot,
-        file = file.path(output_dir, "tt_density_plot.rds"))
-
-
-# summary age and transit times
-sum_age_tt_fun <- function(vector) {
-  data.frame(
-    mean   = mean(vector, na.rm = TRUE),
-    sd     = sd(vector, na.rm = TRUE),
-    q05    = quantile(vector, 0.05, na.rm = TRUE),
-    median = median(vector, na.rm = TRUE),
-    q95    = quantile(vector, 0.95, na.rm = TRUE)
-  )
-}
-SA_summary <- rbind(
-  cbind(Variable = "System Age",       sum_age_tt_fun(age_tt_dist$system_age)),
-  cbind(Variable = "Fast Pool Age",    sum_age_tt_fun(age_tt_dist$fast_age)),
-  cbind(Variable = "Intermediate Age", sum_age_tt_fun(age_tt_dist$inter_age)),
-  cbind(Variable = "Slow Pool Age",    sum_age_tt_fun(age_tt_dist$slow_age))
-)
-TT_summary <- rbind(
-  cbind(Variable = "System Transit Time",       sum_age_tt_fun(age_tt_dist$system_tt)),
-  cbind(Variable = "Fast Pool Transit Time",    sum_age_tt_fun(age_tt_dist$fast_tt)),
-  cbind(Variable = "Intermediate Transit Time", sum_age_tt_fun(age_tt_dist$inter_tt)),
-  cbind(Variable = "Slow Pool Transit Time",    sum_age_tt_fun(age_tt_dist$slow_tt))
-)
-SA_TT_sum_final <- rbind(SA_summary, TT_summary)
-
-SA_TT_sum_final[,-1] <- round(SA_TT_sum_final[,-1], 1)
-SA_TT_sum_final$Variable <- factor(
-  SA_TT_sum_final$Variable,
-  levels = c(
-    "System Age", "Fast Pool Age", "Intermediate Age", "Slow Pool Age",
-    "System Transit Time", "Fast Pool Transit Time",
-    "Intermediate Transit Time", "Slow Pool Transit Time"
-  )
-)
-
-SA_TT_sum_final <- SA_TT_sum_final[order(SA_TT_sum_final$Variable), ]
-print(SA_TT_sum_final)
 
 ## --- Calculate fluxes and stocks for all pools 
 
@@ -714,3 +575,85 @@ flux_summary <- pf_4ps_flux %>%
                values_to = "Value")
 
 print(flux_summary)
+
+# ages and transit times
+get_age_tt <- function(pars){
+  
+  # Build A matrix (same structure as in run_mod)
+  A4 <- diag(-c(pars[1:3], 1e-9))
+  A4[2,1] <- pars[1]*pars[4]
+  A4[3,2] <- pars[2]*pars[6]
+  
+  # Build model (steady-state approximation)
+  mod <- GeneralModel(
+    t = yr,
+    A = A4,
+    ivList = c(C0_fast, abs(C0_bulk-C0_fast-C0_400), C0_400),
+    inputFluxes = c(mean_C_inputs,0,0)
+  )
+  
+  # Ages
+  system_age  <- systemAge(mod)$meanSystemAge
+  pool_age    <- systemAge(mod$meanPoolAge)
+  
+  # Transit time
+  transit_time <- getTransitTime(mod)
+  
+  return(c(
+    system_age = system_age,
+    fast_age   = pool_age[1],
+    inter_age  = pool_age[2],
+    slow_age   = pool_age[3],
+    transit_time = transit_time
+  ))
+}
+set.seed(1)
+
+pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 3000), ]
+
+age_tt_mat <- t(apply(pars_sub, 1, get_age_tt))
+age_tt_df  <- as.data.frame(age_tt_mat)
+
+age_tt_long <- age_tt_df %>%
+  pivot_longer(cols = everything(),
+               names_to = "metric",
+               values_to = "value")
+
+density_age_tt <- ggplot(age_tt_long, aes(x = value)) +
+  geom_density(fill = "orange", alpha = 0.5) +
+  facet_wrap(~ metric, scales = "free") +
+  theme_minimal() +
+  labs(title = "System Age, Pool Ages, and Transit Time Distributions",
+       x = "Years",
+       y = "Density")
+
+ggsave(file.path(output_dir, "age_tt_density.png"),
+       density_age_tt,
+       width = 10, height = 8, dpi = 300)
+
+saveRDS(density_age_tt,
+        file = file.path(output_dir, "age_tt_density.rds"))
+
+sum_age_tt <- function(x){
+  c(
+    mean   = mean(x),
+    sd     = sd(x),
+    median = median(x),
+    q05    = quantile(x, 0.05),
+    q25    = quantile(x, 0.25),
+    q75    = quantile(x, 0.75),
+    q95    = quantile(x, 0.95)
+  )
+}
+
+summary_table <- as.data.frame(t(sapply(age_tt_df, sum_age_tt)))
+summary_table$metric <- rownames(summary_table)
+
+summary_table <- summary_table %>%
+  select(metric, everything())
+
+write.csv(summary_table,
+          file = file.path(output_dir, "age_tt_summary.csv"),
+          row.names = FALSE)
+
+summary_table
