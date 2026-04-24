@@ -550,10 +550,221 @@ saveRDS(plot_C_final,
 saveRDS(plot_C14_final,
         file = file.path(output_dir, "14C.rds"))
 
+### Ages and transit times ###
 
-# Ages and transit times
+# sample mcmc pars
+set.seed(1)
+
+burnin <- 20000  # or more, see below
+pars_full <- as.data.frame(MCMC$pars)
+pars_post <- pars_full[-(1:burnin), ]
+pars_sub <- pars_post[sample(1:nrow(pars_post), 700), ]
+
+# sample ~700 parameter sets
+n_samp <- 700
+pars_sub <- pars_full[sample(1:nrow(pars_full), n_samp), ]
+
+# func to build 3 pool system matrix
+build_A_u <- function(pars){
+  # kf, ki, ks, alpha_fi, x, alpha_is, alpha_fl, alpha_il
+  kf <- pars[1]
+  ki <- pars[2]
+  ks <- pars[3]
+  alpha_fi <- pars[4]
+  alpha_is <- pars[6]
+  A <- diag(-c(kf, ki, ks)) # 3 pool system ---
+  A[2,1] <- kf * alpha_fi
+  A[3,2] <- ki * alpha_is
+  u <- matrix(c(mean_C_inputs, 0, 0), ncol = 1) # input vector (only to fast pool)
+  return(list(A = A, u = u))
+}
+
+# compute densities for one par set
+get_age_tt_dens <- function(pars, ages){
+  AU <- build_A_u(pars)
+  SA <- systemAge(A = AU$A, u = AU$u, a = ages)
+  TT <- transitTime(A = AU$A, u = AU$u, a = ages)
+  data.frame(
+    age = ages,
+    system_age = SA$systemAgeDensity,
+    fast = SA$poolAgeDensity[,1],
+    inter = SA$poolAgeDensity[,2],
+    slow = SA$poolAgeDensity[,3],
+    transit_time = TT$transitTimeDensity
+  )
+}
+
+# run for pars 
+ages <- seq(0, 500, by = 1)
+dens_best <- get_age_tt_dens(bestpars, ages)
+
+# run for sampled mcmc pars 
+dens_list <- lapply(1:nrow(pars_sub), function(i){
+  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
+})
+
+# save(dens_list, file = file.path("mod_runs", "dens_list.Rdata"))
+load(here::here("mod_runs/dens_list.Rdata"))
+
+# uncertainty envelopes
+extract_var <- function(var){
+  sapply(dens_list, function(x) x[[var]])
+}
+
+vars <- c("system_age","fast","inter","slow","transit_time")
+
+unc_dens <- lapply(vars, function(v){
+  
+  mat <- extract_var(v)
+  
+  data.frame(
+    age = ages,
+    variable = v,
+    mean = rowMeans(mat, na.rm = TRUE),
+    median = apply(mat, 1, median, na.rm = TRUE),
+    low  = apply(mat, 1, quantile, 0.025, na.rm = TRUE),
+    high = apply(mat, 1, quantile, 0.975, na.rm = TRUE)
+  )
+})
+
+unc_dens_df <- do.call(rbind, unc_dens)
+
+# best pars for plotting
+dens_best_long <- dens_best %>%
+  pivot_longer(-age, names_to = "variable", values_to = "value")
+
+# summary stats func
+sum_fun <- function(age, dens){
+  dens <- dens / sum(dens)  # normalize
+  mean_age <- sum(age * dens)
+  cdf <- cumsum(dens)
+  median_age <- age[which.min(abs(cdf - 0.5))]
+  q25 <- age[which.min(abs(cdf - 0.25))]
+  q75 <- age[which.min(abs(cdf - 0.75))]
+  q05 <- age[which.min(abs(cdf - 0.05))]
+  q95 <- age[which.min(abs(cdf - 0.95))]
+  data.frame(
+    mean = mean_age,
+    median = median_age,
+    q25 = q25,
+    q75 = q75,
+    q05 = q05,
+    q95 = q95
+  )
+}
+
+# summary stats from mean of MCMC densities
+summary_list <- lapply(unique(unc_dens_df$variable), function(v){
+  df <- unc_dens_df %>% filter(variable == v)
+  stats <- sum_fun(df$age, df$mean)
+  cbind(variable = v, stats)
+})
+
+summary_table <- do.call(rbind, summary_list)
+
+summary_table_fmt <- summary_table %>%
+  mutate(across(-variable, ~round(., 1)))
+
+summary_table_fmt
+
+# plot
+plot_age_tt <- ggplot() +
+  # --- ribbon ---
+  geom_ribbon(data = unc_dens_df,
+              aes(x = log(age), ymin = low, ymax = high),
+              fill = "grey70",
+              alpha = 0.5) +
+  # --- mean density curve (optional) ---
+  geom_line(data = unc_dens_df,
+            aes(x = log(age), y = mean),
+            colour = "black",
+            linewidth = 0.8) +
+  facet_wrap(~variable, scales = "free", ncol = 2) +
+  
+  # --- MEDIAN ---
+  geom_vline(data = summary_table,
+             aes(xintercept = log(median), colour = "Median"),
+             linetype = "dotted",
+             linewidth = 1) +
+  # --- MEAN ---
+  geom_vline(data = summary_table,
+             aes(xintercept = log(mean), colour = "Mean"),
+             linetype = "dashed",
+             linewidth = 1) +
+  # --- legend control ---
+  scale_colour_manual(
+    name = "Statistic",
+    values = c("Median" = "red", "Mean" = "blue")
+  ) +
+  labs(x = "Log age (years)", y = "Density") +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
 
 
+output_dir <- "plots/allsites/4_pool"
+file_plot_age_tt <- file.path(output_dir, "plot_age_tt.png")
+
+png(file_plot_age_tt, width = 10, height = 8, units = "in", res = 300)
+print(plot_age_tt)
+dev.off()
+
+saveRDS(plot_age_tt,
+        file = file.path(output_dir, "plot_age_tt.rds"))
+
+# log age plots
+plot_log_age_tt <- ggplot() +
+  # --- ribbon ---
+  geom_ribbon(data = unc_dens_df,
+              aes(x = age, ymin = low, ymax = high),
+              fill = "grey70",
+              alpha = 0.5) +
+  # --- mean density curve (optional) ---
+  geom_line(data = unc_dens_df,
+            aes(x = age, y = mean),
+            colour = "black",
+            linewidth = 0.8) +
+  facet_wrap(~variable, scales = "free", ncol = 2) +
+  
+  # --- MEDIAN ---
+  geom_vline(data = summary_table,
+             aes(xintercept = median, colour = "Median"),
+             linetype = "dotted",
+             linewidth = 1) +
+  # --- MEAN ---
+  geom_vline(data = summary_table,
+             aes(xintercept = mean, colour = "Mean"),
+             linetype = "dashed",
+             linewidth = 1) +
+  # --- legend control ---
+  scale_colour_manual(
+    name = "Statistic",
+    values = c("Median" = "red", "Mean" = "blue")
+  ) +
+  scale_x_log10(breaks = scales::log_breaks(n = 6))+
+  labs(x = "Age (years), log-scale", y = "Density") +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+output_dir <- "plots/allsites/4_pool"
+file_plot_log_age_tt <- file.path(output_dir, "plot_log_age_tt.png")
+
+png(file_plot_log_age_tt, width = 10, height = 8, units = "in", res = 300)
+print(plot_log_age_tt)
+dev.off()
+
+saveRDS(plot_log_age_tt,
+        file = file.path(output_dir, "plot_log_age_tt.rds"))
+
+
+#### sophie's code:
 ## --- Calculate fluxes and stocks for all pools 
 
 pf_4ps <- MCMC$pars %>%
