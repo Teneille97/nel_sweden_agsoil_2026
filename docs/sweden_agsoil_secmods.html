@@ -105,19 +105,19 @@ window.Quarto = {
 <p>Teneille’s project repository is available on Github at <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026">this link</a>.</p>
 <section id="overview" class="level2">
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
-<p>Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-<span class="math inline">\(\deg\)</span> C and 400-<span class="math inline">\(\deg\)</span> C stable). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.</p>
+<p>Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-<span class="math inline">\(^\circ\)</span>C- and 400-<span class="math inline">\(^\circ\)</span>C-stable carbon). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.</p>
 </section>
 <section id="four-pool-model---parameter-optimization" class="level2">
 <h2 class="anchored" data-anchor-id="four-pool-model---parameter-optimization">Four-pool model - parameter optimization</h2>
-<p>We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 300-<span class="math inline">\(^\circ\)</span>C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-<span class="math inline">\(^\circ\)</span>C-stable pool from the 300-<span class="math inline">\(^\circ\)</span>C-stable poolstable pool.</p>
-<p>The SoilR package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model:</p>
+<p>We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 325-<span class="math inline">\(^\circ\)</span>C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-<span class="math inline">\(^\circ\)</span>C-stable pool from the 325-<span class="math inline">\(^\circ\)</span>C-stable pool.</p>
+<p>The SoilR package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model (script available <a href="https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/allsites_fourp.R">here</a>) that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model:</p>
 <p>• Constant carbon inputs estimated from literature values</p>
 <p>• Observed bulk and organic fraction carbon stocks</p>
 <p>• Bulk soil radiocarbon measurements</p>
 <p>• Atmospheric radiocarbon data</p>
-<p>Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g.&nbsp;decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.</p>
+<p>Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g.&nbsp;decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. These modeled parameters were used to define a range in which to explore many other possible parameter combinations using a Monte Carlo Markov Chain (MCMC) method (from FME). We plotted density curves of the accepted parameters to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.</p>
 <p><strong>Key points</strong></p>
-<p>We obtained clear density peaks and converged modelled values for most parameters.</p>
+<p>We obtained converged modeled values for most parameters. The best-performing model parameter values are listed below as kf, ki, ks (fast, intermediate and slow pool decomposition rates), alpha21 (coefficient indicating proportion of C transfer from fast to slow pool), F0ib (a value that is subtracted from initial bulk radiocarbon measurement to find the initial intermediate radiocarbon value), alpha32 (transfer coefficient from intermediate to slow pool), alpha41 and alpha42 (transfer from fast and intermediate pools to the “loss” pool). We observe moderate C transfer fast to intermediate and then to the slow pool and a low transfer of carbon to the “loss pool”.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -155,9 +155,9 @@ window.Quarto = {
 </section>
 <section id="modeled-radiocarbon-and-carbon-stocks" class="level2">
 <h2 class="anchored" data-anchor-id="modeled-radiocarbon-and-carbon-stocks">Modeled radiocarbon and carbon stocks</h2>
-<p>We used samples of MCMC parameter sets to run the model many times, which let us estimate uncertainty in model predictions.</p>
+<p>We used samples of MCMC parameter sets to run the model many times using different combinations of modeled parameters, which let us estimate uncertainty in model predictions. We plotted the observed carbon stocks and radiocarbon measurements (points with error bars) over time, with the minimum and maximum model predictions at each time point included in the shaded ribbon of uncertainty.</p>
 <p><strong>Key points</strong></p>
-<p>The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly. We found low model uncertainty for radiocarbon and carbon stocks.</p>
+<p>We found low model uncertainty for radiocarbon and carbon stocks. The transfer of C to the “loss pool”, although slow, explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil over time, because if the low radiocarbon incorporation in bulk soil were due to decomposition, there would be higher fast-pool decomposition rates, which would have resulted in more decreases in carbon stocks than we observed.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -179,7 +179,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="ages-and-transit-times">Ages and transit times</h2>
 <p>We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.</p>
 <p><strong>Key points</strong></p>
-<p>Fast-cycling carbon and overall system transit time are very well constrained, while slower pools have much wider uncertainty.</p>
+<p>Fast-cycling carbon and overall system transit time are well constrained, while slower pools have much wider uncertainty. The fast-cycling pool has a relatively high mean age, potentially due to the climate (slower decomposition), or management-related factors (e.g.&nbsp;labile C losses accelerated by tillage). The intermediate-cycling pool is closer in cycling rate to the slow pool than the fast pool, potentially due to the high temperature of combustion removing more of the faster-cycling carbon. The mean ages of the pools are skewed right relative to the median, indicating the weighted contribution effect of older carbon.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
