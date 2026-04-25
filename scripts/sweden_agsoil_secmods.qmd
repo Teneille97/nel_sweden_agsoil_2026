@@ -9,13 +9,13 @@ Teneille's project repository is available on Github at [this link](https://gith
 
 ## Overview
 
-Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-$\deg$ C and 400-$\deg$ C stable). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.
+Four agricultural sites were established in Sweden (M2, M4, M6 and R94) and soils were sampled from 1957 - 2019. Bulk soil samples were fractionated by thermal combustion, isolating two pools (325-$^\circ$C- and 400-$^\circ$C-stable carbon). Carbon content and radiocarbon signatures of the samples were measured, mean soil bulk density was determined and plant-derived carbon inputs were estimated.
 
 ## Four-pool model - parameter optimization
 
-We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 300-$^\circ$C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-$^\circ$C-stable pool from the 300-$^\circ$C-stable poolstable pool.
+We grouped data by year and sample type (bulk and thermal stability fractions) and calculated averages and uncertainties for carbon stocks and radiocarbon. We calculated carbon stocks in the fast pool by subtracting the 325-$^\circ$C-stable pool from bulk soil, and carbon stocks in the intermediate pool by subtracting the 400-$^\circ$C-stable pool from the 325-$^\circ$C-stable pool.
 
-The SoilR package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model:
+The SoilR package includes functions that help us simulate how carbon moves between pools and decomposes over time. We built a soil carbon model (script available [here](https://github.com/Teneille97/nel_sweden_agsoil_2026/blob/main/scripts/allsites_fourp.R)) that splits carbon into four pools: fast, intermediate, slow, and carbon lost by some process (potentially erosion). We gave the model:
 
 • Constant carbon inputs estimated from literature values
 
@@ -25,11 +25,11 @@ The SoilR package includes functions that help us simulate how carbon moves betw
 
 • Atmospheric radiocarbon data
 
-Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g. decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. We plotted carbon stocks and radiocarbon of the bulk soil and pools over time to show how well our model predicts these values. Thereafter, we used a Monte Carlo Markov Chain (MCMC) method (from FME) to explore many possible parameter combinations and plot density curves to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.
+Then we fitted the model to the data using optimization by a cost function (FME), which finds the best parameters (e.g. decomposition rates and transfer between pools) so that the model matches observed carbon stocks and radiocarbon values. These modeled parameters were used to define a range in which to explore many other possible parameter combinations using a Monte Carlo Markov Chain (MCMC) method (from FME). We plotted density curves of the accepted parameters to show likely parameter values. We also checked correlations between parameters and trace plots to make sure the algorithm converged.
 
 **Key points**
 
-We obtained clear density peaks and converged modelled values for most parameters. 
+We obtained converged modeled values for most parameters. The best-performing model parameter values are listed below as kf, ki, ks (fast, intermediate and slow pool decomposition rates), alpha21 (coefficient indicating proportion of C transfer from fast to slow pool), F0ib (a value that is subtracted from initial bulk radiocarbon measurement to find the initial intermediate radiocarbon value), alpha32 (transfer coefficient from intermediate to slow pool), alpha41 and alpha42 (transfer from fast and intermediate pools to the "loss" pool). We observe moderate C transfer fast to intermediate and then to the slow pool and a low transfer of carbon to the "loss pool". 
 
 ```{r}
 #| echo: false
@@ -54,11 +54,11 @@ print(mcmc_pars_df)
 
 ## Modeled radiocarbon and carbon stocks
 
-We used samples of MCMC parameter sets to run the model many times, which let us estimate uncertainty in model predictions.
+We used samples of MCMC parameter sets to run the model many times using different combinations of modeled parameters, which let us estimate uncertainty in model predictions. We plotted the observed carbon stocks and radiocarbon measurements (points with error bars) over time, with the minimum and maximum model predictions at each time point included in the shaded ribbon of uncertainty. 
 
 **Key points** 
 
-The loss pool explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil despite the fast pool not decomposing so rapidly. We found low model uncertainty for radiocarbon and carbon stocks.
+We found low model uncertainty for radiocarbon and carbon stocks. The transfer of C to the "loss pool", although slow, explains the lack of accumulation of modern atmospheric radiocarbon in the bulk soil over time, because if the low radiocarbon incorporation in bulk soil were due to decomposition, there would be higher fast-pool decomposition rates, which would have resulted in more decreases in carbon stocks than we observed. 
 
 ```{r}
 #| echo: false
@@ -76,11 +76,11 @@ print(C14_final)
 
 ## Ages and transit times
 
-We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty.
+We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty. 
 
 **Key points**
 
-Fast-cycling carbon and overall system transit time are very well constrained, while slower pools have much wider uncertainty.
+Fast-cycling carbon and overall system transit time are well constrained, while slower pools have much wider uncertainty. The fast-cycling pool has a relatively high mean age, potentially due to the climate (slower decomposition), or management-related factors (e.g. labile C losses accelerated by tillage). The intermediate-cycling pool is closer in cycling rate to the slow pool than the fast pool, potentially due to the high temperature of combustion removing more of the faster-cycling carbon. The mean ages of the pools are skewed right relative to the median, indicating the weighted contribution effect of older carbon. 
 
 ```{r}
 #| echo: false
