@@ -49,14 +49,19 @@ Atm14C <- rbind(
 
 # add C stocks
 all_data$C_stocks_gm2 <- all_data$Cgkg * bulk_density * 0.2 * 1000
+# --- Add N stocks ---
+all_data$N_stocks_gm2 <- all_data$TONgkg * bulk_density * 0.2 * 1000
 
 summary_df <- all_data %>%
   group_by(Year, Temperature...C.) %>%
   summarise(
     C_stocks_mean = mean(C_stocks_gm2, na.rm = TRUE),
-    C_stocks_sd = sd(C_stocks_gm2, na.rm = TRUE),
+    C_stocks_sd   = sd(C_stocks_gm2, na.rm = TRUE),
+    N_stocks_mean = mean(N_stocks_gm2, na.rm = TRUE),
+    N_stocks_sd   = sd(N_stocks_gm2, na.rm = TRUE),
     d14C_mean     = mean(d14C, na.rm = TRUE),
     d14C_sd       = sd(d14C, na.rm = TRUE),
+    CN_mean       = mean(MolarCN, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -594,6 +599,7 @@ get_age_tt_dens <- function(pars, ages){
 }
 
 # run for pars 
+MCMC_bestpars<-MCMC$bestpar
 ages <- seq(0, 500, by = 1)
 dens_best <- get_age_tt_dens(MCMC_bestpars, ages)
 
@@ -634,21 +640,13 @@ dens_best_long <- dens_best %>%
 
 # summary stats func
 sum_fun <- function(age, dens){
-  dens <- dens / sum(dens)  # normalize
+  dens <- dens / sum(dens)   # <-- THIS is the key
   mean_age <- sum(age * dens)
   cdf <- cumsum(dens)
-  median_age <- age[which.min(abs(cdf - 0.5))]
-  q25 <- age[which.min(abs(cdf - 0.25))]
-  q75 <- age[which.min(abs(cdf - 0.75))]
-  q05 <- age[which.min(abs(cdf - 0.05))]
-  q95 <- age[which.min(abs(cdf - 0.95))]
+  
   data.frame(
-    mean = mean_age,
-    median = median_age,
-    q25 = q25,
-    q75 = q75,
-    q05 = q05,
-    q95 = q95
+    mean   = mean_age,
+    median = age[which.min(abs(cdf - 0.5))]
   )
 }
 
@@ -666,6 +664,8 @@ summary_table_fmt <- summary_table %>%
 
 
 save(summary_table_fmt, file = file.path("mod_runs", "summary_table_fmt.Rdata"))
+load(here::here("mod_runs/summary_table_fmt.Rdata"))
+
 
 # plot
 plot_age_tt <- ggplot() +
@@ -763,126 +763,256 @@ dev.off()
 saveRDS(plot_log_age_tt,
         file = file.path(output_dir, "plot_log_age_tt.rds"))
 
-
-#### sophie's code:
 ## --- Calculate fluxes and stocks for all pools 
 
-pf_4ps <- MCMC$pars %>%
-  as.data.frame()
-
-colnames(pf_4ps) <- c("kf","ki","ks","alpha_fi","x","alpha_is","alpha_fl","alpha_il")
-
-pf_4ps_flux <- pf_4ps %>%
-  mutate(
-    C_fast  = sample(unc_C$Mean[unc_C$Pool == "Fast"],  n(), replace = TRUE),
-    C_inter = sample(unc_C$Mean[unc_C$Pool == "Inter"], n(), replace = TRUE),
-    C_slow  = sample(unc_C$Mean[unc_C$Pool == "Slow"],  n(), replace = TRUE),
+flux_list <- lapply(1:length(runs), function(i){
+  
+  pars <- as.numeric(MCMC$pars[i, ])
+  run  <- runs[[i]]
+  
+  # take pool sizes at final year (quasi steady state)
+  C_fast  <- tail(run$Ct_fast, 1)
+  C_inter <- tail(run$Ct_inter, 1)
+  C_slow  <- tail(run$Ct_slow, 1)
+  
+  kf <- pars[1]
+  ki <- pars[2]
+  ks <- pars[3]
+  alpha_fi <- pars[4]
+  alpha_is <- pars[6]
+  alpha_fl <- pars[7]
+  alpha_il <- pars[8]
+  
+  data.frame(
+    fast_to_loss  = alpha_fl * kf * C_fast,
+    fast_to_inter = alpha_fi * kf * C_fast,
     
-    # Fast pool
-    out_fast = (1 - alpha_fi - alpha_fl) * kf * C_fast,
-    trans_fast_to_inter = alpha_fi * kf * C_fast,
-    trans_fast_to_loss  = alpha_fl * kf * C_fast,
+    inter_to_loss = alpha_il * ki * C_inter,
+    inter_to_slow = alpha_is * ki * C_inter,
     
-    # Intermediate pool
-    out_inter = (1 - alpha_is - alpha_il) * ki * C_inter,
-    trans_inter_to_slow = alpha_is * ki * C_inter,
-    trans_inter_to_loss = alpha_il * ki * C_inter,
-    
-    # Slow pool
-    out_slow = ks * C_slow
+    slow_to_loss  = ks * C_slow
   )
+})
 
-flux_summary <- pf_4ps_flux %>%
-  summarise(across(starts_with("out") | starts_with("trans"),
+flux_df <- do.call(rbind, flux_list)
+
+flux_summary <- flux_df %>%
+  summarise(across(everything(),
                    list(
-                     median = ~round(median(.), 2),
-                     lci    = ~round(quantile(., 0.05), 2),
-                     uci    = ~round(quantile(., 0.95), 2)
-                   ))) %>%
+                     median = ~median(.),
+                     lci = ~quantile(., 0.05),
+                     uci = ~quantile(., 0.95)
+                   )
+  )) %>%
   pivot_longer(everything(),
                names_to = "Metric",
                values_to = "Value")
 
-print(flux_summary)
 
-# ages and transit times
-get_age_tt <- function(pars){
-  
-  # Build A matrix (same structure as in run_mod)
-  A4 <- diag(-c(pars[1:3], 1e-9))
-  A4[2,1] <- pars[1]*pars[4]
-  A4[3,2] <- pars[2]*pars[6]
-  
-  # Build model (steady-state approximation)
-  mod <- GeneralModel(
-    t = yr,
-    A = A4,
-    ivList = c(C0_fast, abs(C0_bulk-C0_fast-C0_400), C0_400),
-    inputFluxes = c(mean_C_inputs,0,0)
+# Weighted C and N age density distributions
+
+# 1. Final CN ratio and stocks for best parameter set
+best_run <- out_best_MCMC
+final_yr_idx <- nrow(best_run)
+final_CN <- tail(bulk$CN_mean, 1) 
+
+# Best estimate pool sizes
+best_C_stocks <- c(
+  fast = best_run$Ct_fast[final_yr_idx],
+  inter = best_run$Ct_inter[final_yr_idx],
+  slow = best_run$Ct_slow[final_yr_idx],
+  bulk = best_run$Ct[final_yr_idx]
+)
+
+# 2. Scale best density by best stocks
+dens_best_weighted <- dens_best %>%
+  mutate(
+    C_fast_stock  = fast * best_C_stocks["fast"],
+    C_inter_stock = inter * best_C_stocks["inter"],
+    C_slow_stock  = slow * best_C_stocks["slow"],
+    C_bulk_stock  = system_age * best_C_stocks["bulk"],
+    # Nitrogen stocks
+    N_fast_stock  = C_fast_stock / final_CN,
+    N_inter_stock = C_inter_stock / final_CN,
+    N_slow_stock  = C_slow_stock / final_CN,
+    N_bulk_stock  = C_bulk_stock / final_CN
   )
+
+# scale each MCMC run's density by its own final stock size
+get_mcmc_stock_dens <- function(i) {
+  r <- runs[[i]]
+  d <- dens_list[[i]]
+  f_idx <- nrow(r)
   
-  # Ages
-  system_age  <- systemAge(mod)$meanSystemAge
-  pool_age    <- systemAge(mod$meanPoolAge)
-  
-  # Transit time
-  transit_time <- getTransitTime(mod)
-  
-  return(c(
-    system_age = system_age,
-    fast_age   = pool_age[1],
-    inter_age  = pool_age[2],
-    slow_age   = pool_age[3],
-    transit_time = transit_time
-  ))
-}
-set.seed(1)
-
-pars_sub <- MCMC$pars[sample(1:nrow(MCMC$pars), 3000), ]
-
-age_tt_mat <- t(apply(pars_sub, 1, get_age_tt))
-age_tt_df  <- as.data.frame(age_tt_mat)
-
-age_tt_long <- age_tt_df %>%
-  pivot_longer(cols = everything(),
-               names_to = "metric",
-               values_to = "value")
-
-density_age_tt <- ggplot(age_tt_long, aes(x = value)) +
-  geom_density(fill = "orange", alpha = 0.5) +
-  facet_wrap(~ metric, scales = "free") +
-  theme_minimal() +
-  labs(title = "System Age, Pool Ages, and Transit Time Distributions",
-       x = "Years",
-       y = "Density")
-
-ggsave(file.path(output_dir, "age_tt_density.png"),
-       density_age_tt,
-       width = 10, height = 8, dpi = 300)
-
-saveRDS(density_age_tt,
-        file = file.path(output_dir, "age_tt_density.rds"))
-
-sum_age_tt <- function(x){
-  c(
-    mean   = mean(x),
-    sd     = sd(x),
-    median = median(x),
-    q05    = quantile(x, 0.05),
-    q25    = quantile(x, 0.25),
-    q75    = quantile(x, 0.75),
-    q95    = quantile(x, 0.95)
+  data.frame(
+    age = d$age,
+    C_fast_stock  = d$fast * r$Ct_fast[f_idx],
+    C_inter_stock = d$inter * r$Ct_inter[f_idx],
+    C_slow_stock  = d$slow * r$Ct_slow[f_idx],
+    C_bulk_stock  = d$system_age * r$Ct[f_idx]
   )
 }
 
-summary_table <- as.data.frame(t(sapply(age_tt_df, sum_age_tt)))
-summary_table$metric <- rownames(summary_table)
+mcmc_stock_list <- lapply(1:length(runs), get_mcmc_stock_dens)
 
-summary_table <- summary_table %>%
-  select(metric, everything())
+# variables to calculate uncertainty for
+stock_vars <- c("C_fast_stock", "C_inter_stock", "C_slow_stock", "C_bulk_stock",
+                "N_fast_stock", "N_inter_stock", "N_slow_stock", "N_bulk_stock")
 
-write.csv(summary_table,
-          file = file.path(output_dir, "age_tt_summary.csv"),
-          row.names = FALSE)
+# add N data to mcmc stocks list using inverse cn ratio
+mcmc_stock_list <- lapply(1:length(runs), function(i) {
+  r <- runs[[i]]
+  d <- dens_list[[i]]
+  f_idx <- nrow(r)
+  
+  # Calculate C stocks for this run
+  cf <- d$fast * r$Ct_fast[f_idx]
+  ci <- d$inter * r$Ct_inter[f_idx]
+  cs <- d$slow * r$Ct_slow[f_idx]
+  cb <- d$system_age * r$Ct[f_idx]
+  
+  data.frame(
+    age = d$age,
+    C_fast_stock = cf, C_inter_stock = ci, C_slow_stock = cs, C_bulk_stock = cb,
+    N_fast_stock = cf / final_CN,
+    N_inter_stock = ci / final_CN,
+    N_slow_stock = cs / final_CN,
+    N_bulk_stock = cb / final_CN
+  )
+})
 
-summary_table
+# 95% CI for ALL variables
+unc_stocks_list <- lapply(stock_vars, function(v){
+  mat <- sapply(mcmc_stock_list, function(x) x[[v]])
+  data.frame(
+    age = ages,
+    variable = v,
+    low  = apply(mat, 1, quantile, 0.025, na.rm = TRUE),
+    high = apply(mat, 1, quantile, 0.975, na.rm = TRUE)
+  )
+})
+unc_stocks_df <- do.call(rbind, unc_stocks_list)
+
+# Join best-fit data with uncertainty data
+plot_df_final <- dens_best_weighted %>%
+  select(age, contains("_stock")) %>%
+  pivot_longer(-age, names_to = "variable", values_to = "best_val") %>%
+  left_join(unc_stocks_df, by = c("age", "variable"))
+
+# Summary of best parameter weighted distribution
+
+final_stats <- dens_best_weighted %>%
+  select(age, contains("_stock")) %>%
+  pivot_longer(-age, names_to = "variable", values_to = "value") %>%
+  group_by(variable) %>%
+  summarise(
+    mean_val = sum(age * value) / sum(value),
+    median_val = age[which.min(abs(cumsum(value)/sum(value) - 0.5))]
+  ) %>%
+  ungroup()
+
+print(final_stats)
+#save(final_stats, file = file.path("mod_runs", "final_stats_weighted_ages.Rdata"))
+ 
+## plots
+
+# colours
+col_bulk <- "black"
+col_fast <- "#1b9e77"
+col_slow <- "#BF40BF"
+col_inter <- "#0000FF"
+
+pool_colors <- c(
+  "C_bulk_stock" = "black", "C_fast_stock" = "#1b9e77", 
+  "C_inter_stock" = "#0000FF", "C_slow_stock" = "#BF40BF",
+  "N_bulk_stock" = "black", "N_fast_stock" = "#1b9e77", 
+  "N_inter_stock" = "#0000FF", "N_slow_stock" = "#BF40BF",
+  "Mean" = "blue", "Median" = "red"
+)
+
+# Prepare Data (Best line + MCMC ribbons) ---
+
+final_stats <- dens_best_weighted %>%
+  select(age, contains("_stock")) %>%
+  pivot_longer(-age, names_to = "variable", values_to = "value") %>%
+  group_by(variable) %>%
+  summarise(
+    mean_val = sum(age * value) / sum(value),
+    median_val = age[which.min(abs(cumsum(value)/sum(value) - 0.5))]
+  )
+
+# Combined Plotting Function for C and N ---
+create_stock_age_plot <- function(data_subset, title_text, y_label) {
+  
+  stats_subset <- final_stats %>% filter(variable %in% unique(data_subset$variable))
+  
+  ggplot(data_subset, aes(x = age)) +
+    # MCMC Ribbon
+    geom_ribbon(aes(ymin = low, ymax = high, fill = variable), alpha = 0.4) +
+    
+    # Best parameter line
+    geom_line(aes(y = best_val, colour = variable), linewidth = 0.8) +
+    
+    # --- MEAN LINE (Dashed) ---
+    geom_vline(data = stats_subset, 
+               aes(xintercept = mean_val, colour = "Mean"), 
+               linetype = "dashed", linewidth = 0.8) +
+    
+    # --- MEDIAN LINE (Dotted) ---
+    geom_vline(data = stats_subset, 
+               aes(xintercept = median_val, colour = "Median"), 
+               linetype = "dotted", linewidth = 0.8) +
+    
+    # Aesthetics
+    facet_wrap(~variable, scales = "free_y", ncol = 2) +
+    scale_x_log10(breaks = scales::log_breaks(n = 6)) +
+    
+    # Legends 
+    scale_fill_manual(values = pool_colors, guide = "none") + 
+    scale_colour_manual(
+      values = pool_colors,
+      breaks = c("Mean", "Median"), # ONLY show these in the legend
+      name = "Statistics"
+    ) +
+    
+    # Labels
+    labs(x = "Age (years), log-scale", 
+         y = y_label,
+         title = title_text) +
+    theme_minimal(base_size = 14) +
+    theme(
+      strip.text = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom"
+    )
+}
+
+# Generate Plots
+plot_C_weighted_final <- create_stock_age_plot(
+  subset(plot_df_final, grepl("^C_", variable)), 
+  "Carbon Stock Distribution by Age",
+  expression(Carbon~stocks~(g~m^{-2}))
+)
+
+plot_N_weighted_final <- create_stock_age_plot(
+  subset(plot_df_final, grepl("^N_", variable)), 
+  "Nitrogen Stock Distribution by Age",
+  expression(Nitrogen~stocks~(g~m^{-2}))
+)
+
+
+output_dir <- "plots/allsites/4_pool"
+
+file_plot_C_weighted_final <- file.path(output_dir, "plot_C_weighted_final.png")
+file_C14plot_C_weighted_final <- file.path(output_dir, "plot_N_weighted_final.png")
+
+ggsave(filename = file_plot_C_weighted_final, plot = plot_C_weighted_final,
+       width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(filename = file_C14plot_C_weighted_final, plot = plot_N_weighted_final,
+       width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(plot_C_weighted_final,
+        file = file.path(output_dir, "plot_C_weighted_final.rds"))
+saveRDS(plot_N_weighted_final,
+        file = file.path(output_dir, "plot_N_weighted_final.rds"))
+

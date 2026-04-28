@@ -77,6 +77,7 @@ print(C14_final)
 ## Ages and transit times
 
 We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty. 
+We converted modeled age distributions into real amounts of carbon and nitrogen at each age at steady-state (taken as the final year) by scaling them with pool sizes from the best model. Then we used MCMC runs to add uncertainty ranges. The summary table shows the amount of carbon and nitrogen stocks 
 
 **Key points**
 
@@ -94,5 +95,12 @@ print(plot_log_age_tt)
 
 load(here::here("mod_runs/summary_table_fmt.Rdata"))
 print(summary_table_fmt)
+
+
+plot_C_weighted_final<-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_C_weighted_final.rds")
+plot_N_weighted_final<-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_N_weighted_final.rds")
+print(plot_N_weighted_final)
+print(plot_C_weighted_final)
+
 
 ```
