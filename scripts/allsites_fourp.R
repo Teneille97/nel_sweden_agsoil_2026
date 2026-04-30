@@ -620,9 +620,9 @@ ages <- seq(0, 500, by = 1)
 dens_best <- get_age_tt_dens(MCMC_bestpars, ages)
 
 # run for sampled mcmc pars 
-#dens_list <- lapply(1:nrow(pars_sub), function(i){
-#  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
-#})
+dens_list <- lapply(1:nrow(pars_sub), function(i){
+  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
+})
 
 # save(dens_list, file = file.path("mod_runs", "dens_list.Rdata"))
 load(here::here("mod_runs/dens_list.Rdata"))
@@ -760,7 +760,10 @@ plot_log_age_tt <- ggplot() +
     name = "Statistic",
     values = c("Median" = "red", "Mean" = "blue")
   ) +
-  scale_x_log10(breaks = scales::log_breaks(n = 6))+
+  scale_x_log10(
+    limits = c(1, 500),
+    breaks = c(1, 10, 50, 100, 200, 500)
+  )+
   labs(x = "Age (years), log-scale", y = "Density") +
   theme_minimal(base_size = 14) +
   theme(
@@ -1058,7 +1061,10 @@ create_stock_age_plot <- function(data_subset, title_text, y_label) {
     
     facet_wrap(~variable, scales = "free_y", ncol = 2) +
     
-    scale_x_log10(breaks = scales::log_breaks(n = 6)) +
+    scale_x_log10(
+      limits = c(1, 500),
+      breaks = c(1, 10, 50, 100, 200, 500)
+    ) +
     scale_fill_manual(values = pool_colors, guide = "none") +
     
     scale_colour_manual(values = pool_colors,
