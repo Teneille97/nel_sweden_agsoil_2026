@@ -77,11 +77,11 @@ print(C14_final)
 ## Ages and transit times
 
 We used our model to estimate how long carbon stays in the soil system and in each pool (fast, intermediate, and slow). To capture uncertainty, we took many different parameter combinations from our MCMC results and ran the model for each one. For every run, we calculated mean system age, mean pool ages, and mean system transit time. We then combined all runs to calculate the range of uncertainty. 
-We converted modeled age distributions into real amounts of carbon and nitrogen at each age at steady-state (taken as the final year) by scaling them with pool sizes from the best model. Then we used MCMC runs to add uncertainty ranges. The summary table shows the amount of carbon and nitrogen stocks 
+We converted modeled age distributions into real amounts of carbon and nitrogen at each age at steady-state (taken as the final year) by scaling them with pool sizes from the best model, where nitrogen stocks were estimated using the steady-state CN ratio. Then we used MCMC runs to add uncertainty ranges. The summary table shows the amount of carbon and nitrogen stocks 
 
 **Key points**
 
-Fast-cycling carbon and overall system transit time are well constrained, while slower pools have much wider uncertainty. The fast-cycling pool has a relatively high mean age, potentially due to the climate (slower decomposition), or management-related factors (e.g. labile C losses accelerated by tillage). The intermediate-cycling pool is closer in cycling rate to the slow pool than the fast pool, potentially due to the high temperature of combustion removing more of the faster-cycling carbon. The mean ages of the pools are skewed right relative to the median, indicating the weighted contribution effect of older carbon. 
+Fast-cycling carbon and overall system transit time are well constrained, while slower pools have much wider uncertainty. The fast-cycling pool has a relatively high mean age, potentially due to the climate (slower decomposition), or management-related factors (e.g. labile C losses accelerated by tillage). The intermediate-cycling pool is closer in cycling rate to the slow pool than the fast pool, potentially due to the high temperature of combustion removing more of the faster-cycling carbon. The mean ages of the pools are skewed right relative to the median, indicating the weighted contribution effect of older carbon. The weighted density distribution of bulk N stocks are shifted right compared to C stocks, an effect that arises from the lower CN ratio of older pools, which implies that N is more associated with slower-cycling SOM pools.
 
 ```{r}
 #| echo: false
