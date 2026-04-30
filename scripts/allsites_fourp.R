@@ -1015,6 +1015,7 @@ final_stats$variable <- recode(final_stats$variable,
                                "N_slow_stock"   = "N slow")
 
 print(final_stats)
+save(final_stats, file = file.path("mod_runs", "final_stats_weighted.Rdata"))
 
 # ============================================================
 # 7. PLOTTING 

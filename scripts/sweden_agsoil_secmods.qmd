@@ -101,6 +101,7 @@ plot_C_weighted_final<-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/
 plot_N_weighted_final<-readRDS("C:/Users/tnel/OneDrive - Universiteit Antwerpen/Documents/nel_sweden_agsoil_2026/plots/allsites/4_pool/plot_N_weighted_final.rds")
 print(plot_N_weighted_final)
 print(plot_C_weighted_final)
-
+load(here::here("mod_runs/final_stats_weighted.Rdata"))
+print(final_stats)
 
 ```
