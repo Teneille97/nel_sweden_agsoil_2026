@@ -762,7 +762,7 @@ plot_log_age_tt <- ggplot() +
   ) +
   scale_x_log10(
     limits = c(1, 500),
-    breaks = c(1, 10, 50, 100, 200, 500)
+    breaks = c(1, 5, 10, 100, 500)
   )+
   labs(x = "Age (years), log-scale", y = "Density") +
   theme_minimal(base_size = 14) +
@@ -1063,8 +1063,8 @@ create_stock_age_plot <- function(data_subset, title_text, y_label) {
     
     scale_x_log10(
       limits = c(1, 500),
-      breaks = c(1, 10, 50, 100, 200, 500)
-    ) +
+      breaks = c(1, 5, 10, 100, 500)
+    )+
     scale_fill_manual(values = pool_colors, guide = "none") +
     
     scale_colour_manual(values = pool_colors,
