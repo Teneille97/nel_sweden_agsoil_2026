@@ -78,6 +78,15 @@ C14obs_slow <- data.frame(Year = pool_400$Year, C14t_slow = pool_400$d14C_mean, 
 Cobs_fast <- data.frame(Year = Cobs_325$Year, Ct_fast = Cobs_bulk$Ct-Cobs_325$Ct_325, Ct_fast_sd = sqrt(bulk$C_stocks_sd^2 + pool_325$C_stocks_sd^2)) # C fast  = C bulk - C 325
 Cobs_inter<-data.frame(Year = Cobs_325$Year, Ct_inter = Cobs_325$Ct_325-Cobs_slow$Ct_slow, Ct_inter_sd = sqrt(Cobs_325$Ct_325_sd^2 + Cobs_slow$Ct_slow_sd^2))
 
+
+# obs N stocks (not for models, only final age distributions)
+Nobs_bulk <- data.frame(Year = bulk$Year, Nt = bulk$N_stocks_mean, Nt_sd = bulk$N_stocks_sd)
+Nobs_325 <- data.frame(Year = pool_325$Year, Nt_325 = pool_325$N_stocks_mean, Nt_325_sd = pool_325$N_stocks_sd)
+Nobs_slow <- data.frame(Year = pool_400$Year, Nt_slow = pool_400$N_stocks_mean, Nt_slow_sd = pool_400$N_stocks_sd)
+Nobs_fast <- data.frame(Year = Nobs_325$Year, Nt_fast = Nobs_bulk$Nt-Nobs_325$Nt_325, Nt_fast_sd = sqrt(bulk$N_stocks_sd^2 + pool_325$N_stocks_sd^2)) # C fast  = C bulk - C 325
+Nobs_inter<-data.frame(Year = Nobs_325$Year, Nt_inter = Nobs_325$Nt_325-Nobs_slow$Nt_slow, Nt_inter_sd = sqrt(Nobs_325$Nt_325_sd^2 + Nobs_slow$Nt_slow_sd^2))
+
+
 #remove NA sd values
 Cobs_bulk$Ct_sd[is.na(Cobs_bulk$Ct_sd)] <- mean(Cobs_bulk$Ct_sd, na.rm = TRUE) 
 C14obs_bulk$C14t_sd[is.na(C14obs_bulk$C14t_sd)] <- mean(C14obs_bulk$C14t_sd, na.rm = TRUE)
@@ -85,6 +94,13 @@ Cobs_fast$Ct_fast_sd[is.na(Cobs_fast$Ct_fast_sd)] <- mean(Cobs_fast$Ct_fast_sd, 
 C14obs_slow$C14t_slow_sd[is.na(C14obs_slow$C14t_slow_sd)] <- mean(C14obs_slow$C14t_slow_sd, na.rm = TRUE)
 Cobs_inter$Ct_inter_sd[is.na(Cobs_inter$Ct_inter_sd)] <- mean(Cobs_inter$Ct_inter_sd, na.rm = TRUE)
 Cobs_slow$Ct_slow_sd[is.na(Cobs_slow$Ct_slow_sd)] <- mean(Cobs_slow$Ct_slow_sd, na.rm = TRUE)
+
+
+Nobs_bulk$Nt_sd[is.na(Nobs_bulk$Nt_sd)] <- mean(Nobs_bulk$Nt_sd, na.rm = TRUE) 
+Nobs_fast$Nt_fast_sd[is.na(Nobs_fast$Nt_fast_sd)] <- mean(Nobs_fast$Nt_fast_sd, na.rm = TRUE)
+Nobs_inter$Nt_inter_sd[is.na(Nobs_inter$Nt_inter_sd)] <- mean(Nobs_inter$Nt_inter_sd, na.rm = TRUE)
+Nobs_slow$Nt_slow_sd[is.na(Nobs_slow$Nt_slow_sd)] <- mean(Nobs_slow$Nt_slow_sd, na.rm = TRUE)
+
 
 #initial values
 yr <- seq(1957, 2019, by = 1/12)
@@ -809,81 +825,126 @@ flux_summary <- flux_df %>%
                values_to = "Value")
 
 
-# Weighted C and N age density distributions
+# ============================================================
+# Weighted C and N age density distributions (RECONSTRUCTED BULK)
+# ============================================================
 
-# 1. Final CN ratio and stocks for best parameter set
+# 1. Final stocks for best parameter set
 best_run <- out_best_MCMC
 final_yr_idx <- nrow(best_run)
-final_CN <- tail(bulk$CN_mean, 1) 
 
-# Best estimate pool sizes
+# Best-fit C pools
 best_C_stocks <- c(
-  fast = best_run$Ct_fast[final_yr_idx],
+  fast  = best_run$Ct_fast[final_yr_idx],
   inter = best_run$Ct_inter[final_yr_idx],
-  slow = best_run$Ct_slow[final_yr_idx],
-  bulk = best_run$Ct[final_yr_idx]
+  slow  = best_run$Ct_slow[final_yr_idx]
 )
 
-# 2. Scale best density by best stocks
+# observed final C and N stocks
+
+final_Cobs <- c(
+  fast  = tail(Cobs_fast$Ct_fast, 1),
+  inter = tail(Cobs_inter$Ct_inter, 1),
+  slow  = tail(Cobs_slow$Ct_slow, 1)
+)
+
+final_Nobs <- c(
+  fast  = tail(Nobs_fast$Nt_fast, 1),
+  inter = tail(Nobs_inter$Nt_inter, 1),
+  slow  = tail(Nobs_slow$Nt_slow, 1)
+)
+
+# ============================================================
+# Pool-specific CN ratios (from observed decomposed pools)
+# ============================================================
+
+CN_bulk_final <- tail(bulk$CN_mean, 1)
+CN_fast_final <- final_Cobs[1]  / final_Nobs[1]
+CN_inter_final <- final_Cobs[2]  / final_Nobs[2]
+CN_slow_final <- final_Cobs[3]  / final_Nobs[3]
+
+# ============================================================
+# 2. BEST-FIT density-weighted system
+# ============================================================
+
 dens_best_weighted <- dens_best %>%
   mutate(
-    C_fast_stock  = fast * best_C_stocks["fast"],
+    
+    # density x Carbon stocks 
+    C_fast_stock  = fast  * best_C_stocks["fast"],
     C_inter_stock = inter * best_C_stocks["inter"],
-    C_slow_stock  = slow * best_C_stocks["slow"],
-    C_bulk_stock  = system_age * best_C_stocks["bulk"],
-    # Nitrogen stocks
-    N_fast_stock  = C_fast_stock / final_CN,
-    N_inter_stock = C_inter_stock / final_CN,
-    N_slow_stock  = C_slow_stock / final_CN,
-    N_bulk_stock  = C_bulk_stock / final_CN
+    C_slow_stock  = slow  * best_C_stocks["slow"],
+    C_system_stock = C_fast_stock + C_inter_stock + C_slow_stock
+  ) %>%
+  
+  mutate(
+    
+    # density x Nitrogen stocks
+    N_fast_stock  = fast * best_C_stocks["fast"]* 1/CN_fast_final,
+    N_inter_stock = inter * best_C_stocks["inter"] * 1/CN_inter_final,
+    N_slow_stock  = slow * best_C_stocks["slow"] * 1/CN_slow_final,
+    N_system_stock = N_fast_stock + N_inter_stock + N_slow_stock
   )
 
-# scale each MCMC run's density by its own final stock size
-get_mcmc_stock_dens <- function(i) {
+# ============================================================
+# 3. MCMC ENSEMBLE (mass-conserving N)
+# ============================================================
+
+stock_vars <- c(
+  "C_fast_stock", "C_inter_stock", "C_slow_stock", "C_system_stock",
+  "N_fast_stock", "N_inter_stock", "N_slow_stock", "N_system_stock"
+)
+
+mcmc_stock_list <- lapply(seq_along(runs), function(i) {
+  
   r <- runs[[i]]
   d <- dens_list[[i]]
   f_idx <- nrow(r)
   
-  data.frame(
-    age = d$age,
-    C_fast_stock  = d$fast * r$Ct_fast[f_idx],
-    C_inter_stock = d$inter * r$Ct_inter[f_idx],
-    C_slow_stock  = d$slow * r$Ct_slow[f_idx],
-    C_bulk_stock  = d$system_age * r$Ct[f_idx]
-  )
-}
-
-mcmc_stock_list <- lapply(1:length(runs), get_mcmc_stock_dens)
-
-# variables to calculate uncertainty for
-stock_vars <- c("C_fast_stock", "C_inter_stock", "C_slow_stock", "C_bulk_stock",
-                "N_fast_stock", "N_inter_stock", "N_slow_stock", "N_bulk_stock")
-
-# add N data to mcmc stocks list using inverse cn ratio
-mcmc_stock_list <- lapply(1:length(runs), function(i) {
-  r <- runs[[i]]
-  d <- dens_list[[i]]
-  f_idx <- nrow(r)
-  
-  # Calculate C stocks for this run
-  cf <- d$fast * r$Ct_fast[f_idx]
+  # Carbon pools
+  cf <- d$fast  * r$Ct_fast[f_idx]
   ci <- d$inter * r$Ct_inter[f_idx]
-  cs <- d$slow * r$Ct_slow[f_idx]
-  cb <- d$system_age * r$Ct[f_idx]
+  cs <- d$slow  * r$Ct_slow[f_idx]
+  
+  C_sys <- cf + ci + cs
+  
+  # ============================================================
+  # using final observed CN to estimate N densities
+  # ============================================================
+  
+  Nf <- d$fast * r$Ct_fast[f_idx] * 1/CN_fast_final
+  Ni <- d$inter * r$Ct_inter[f_idx] * 1/CN_inter_final
+  Ns <- d$slow * r$Ct_slow[f_idx] * 1/CN_slow_final
+  
+  N_sys <- Nf + Ni + Ns
   
   data.frame(
     age = d$age,
-    C_fast_stock = cf, C_inter_stock = ci, C_slow_stock = cs, C_bulk_stock = cb,
-    N_fast_stock = cf / final_CN,
-    N_inter_stock = ci / final_CN,
-    N_slow_stock = cs / final_CN,
-    N_bulk_stock = cb / final_CN
+    
+    # Carbon
+    C_fast_stock  = cf,
+    C_inter_stock = ci,
+    C_slow_stock  = cs,
+    C_system_stock = C_sys,
+    
+    # Nitrogen 
+    N_fast_stock  = Nf,
+    N_inter_stock = Ni,
+    N_slow_stock  = Ns,
+    N_system_stock = N_sys
   )
 })
 
-# 95% CI for ALL variables
+# ============================================================
+# 4. Uncertainty envelopes
+# ============================================================
+
+ages <- dens_list[[1]]$age
+
 unc_stocks_list <- lapply(stock_vars, function(v){
+  
   mat <- sapply(mcmc_stock_list, function(x) x[[v]])
+  
   data.frame(
     age = ages,
     variable = v,
@@ -891,128 +952,155 @@ unc_stocks_list <- lapply(stock_vars, function(v){
     high = apply(mat, 1, quantile, 0.975, na.rm = TRUE)
   )
 })
+
 unc_stocks_df <- do.call(rbind, unc_stocks_list)
 
-# Join best-fit data with uncertainty data
+unc_stocks_df <- unc_stocks_df %>%
+  mutate(type = ifelse(grepl("^C_", variable), "C", "N"))
+
+# ============================================================
+# 5. Merge best-fit + uncertainty
+# ============================================================
+
 plot_df_final <- dens_best_weighted %>%
   select(age, contains("_stock")) %>%
   pivot_longer(-age, names_to = "variable", values_to = "best_val") %>%
-  left_join(unc_stocks_df, by = c("age", "variable"))
+  mutate(type = ifelse(grepl("^C_", variable), "C", "N")) %>%
+  left_join(unc_stocks_df, by = c("age", "variable", "type"))
 
-# Summary of best parameter weighted distribution
+
+plot_df_final$variable <- recode(plot_df_final$variable,
+                                 "C_system_stock" = "C system (reconstructed)",
+                                 "N_system_stock" = "N system (reconstructed)",
+                                 "C_fast_stock"   = "C fast",
+                                 "C_inter_stock"  = "C intermediate",
+                                 "C_slow_stock"   = "C slow",
+                                 "N_fast_stock"   = "N fast",
+                                 "N_inter_stock"  = "N intermediate",
+                                 "N_slow_stock"   = "N slow"
+)
+
+# ============================================================
+# 6. Summary statistics
+# ============================================================
+
+fast_ref <- summary_table_fmt$median[
+  summary_table_fmt$variable == "fast"
+]
+
+slow_ref <- summary_table_fmt$median[
+  summary_table_fmt$variable == "slow"
+]
 
 final_stats <- dens_best_weighted %>%
   select(age, contains("_stock")) %>%
   pivot_longer(-age, names_to = "variable", values_to = "value") %>%
   group_by(variable) %>%
   summarise(
-    mean_val = sum(age * value) / sum(value),
-    median_val = age[which.min(abs(cumsum(value)/sum(value) - 0.5))]
-  ) %>%
-  ungroup()
+    total_stock = sum(value),
+    mean_val   = sum(age * value) / sum(value),
+    median_val = age[which.min(abs(cumsum(value) / sum(value) - 0.5))],
+    frac_younger_fast = sum(value[age <= fast_ref]) / sum(value),
+    frac_older_slow   = sum(value[age >= slow_ref]) / sum(value)
+  )
+
+final_stats$variable <- recode(final_stats$variable,
+                               "C_system_stock" = "C system (reconstructed)",
+                               "N_system_stock" = "N system (reconstructed)",
+                               "C_fast_stock"   = "C fast",
+                               "C_inter_stock"  = "C intermediate",
+                               "C_slow_stock"   = "C slow",
+                               "N_fast_stock"   = "N fast",
+                               "N_inter_stock"  = "N intermediate",
+                               "N_slow_stock"   = "N slow")
 
 print(final_stats)
-#save(final_stats, file = file.path("mod_runs", "final_stats_weighted_ages.Rdata"))
- 
-## plots
 
-# colours
-col_bulk <- "black"
-col_fast <- "#1b9e77"
-col_slow <- "#BF40BF"
+# ============================================================
+# 7. PLOTTING 
+# ============================================================
+
+col_fast  <- "#1b9e77"
+col_slow  <- "#BF40BF"
 col_inter <- "#0000FF"
 
 pool_colors <- c(
-  "C_bulk_stock" = "black", "C_fast_stock" = "#1b9e77", 
-  "C_inter_stock" = "#0000FF", "C_slow_stock" = "#BF40BF",
-  "N_bulk_stock" = "black", "N_fast_stock" = "#1b9e77", 
-  "N_inter_stock" = "#0000FF", "N_slow_stock" = "#BF40BF",
-  "Mean" = "blue", "Median" = "red"
+  "C fast" = col_fast,
+  "C intermediate" = col_inter,
+  "C slow" = col_slow,
+  "N fast" = col_fast,
+  "N intermediate" = col_inter,
+  "N slow" = col_slow,
+  "C system (reconstructed)" = "black",
+  "N system (reconstructed)" = "black",
+  "Mean" = "blue",
+  "Median" = "red"
 )
 
-# Prepare Data (Best line + MCMC ribbons) ---
-
-final_stats <- dens_best_weighted %>%
-  select(age, contains("_stock")) %>%
-  pivot_longer(-age, names_to = "variable", values_to = "value") %>%
-  group_by(variable) %>%
-  summarise(
-    mean_val = sum(age * value) / sum(value),
-    median_val = age[which.min(abs(cumsum(value)/sum(value) - 0.5))]
-  )
-
-# Combined Plotting Function for C and N ---
 create_stock_age_plot <- function(data_subset, title_text, y_label) {
   
-  stats_subset <- final_stats %>% filter(variable %in% unique(data_subset$variable))
+  stats_subset <- final_stats %>%
+    filter(variable %in% unique(data_subset$variable))
   
   ggplot(data_subset, aes(x = age)) +
-    # MCMC Ribbon
-    geom_ribbon(aes(ymin = low, ymax = high, fill = variable), alpha = 0.4) +
     
-    # Best parameter line
+    geom_ribbon(aes(ymin = low, ymax = high, fill = variable), alpha = 0.4) +
     geom_line(aes(y = best_val, colour = variable), linewidth = 0.8) +
     
-    # --- MEAN LINE (Dashed) ---
-    geom_vline(data = stats_subset, 
-               aes(xintercept = mean_val, colour = "Mean"), 
-               linetype = "dashed", linewidth = 0.8) +
+    geom_vline(data = stats_subset,
+               aes(xintercept = mean_val, colour = "Mean"),
+               linetype = "dashed") +
     
-    # --- MEDIAN LINE (Dotted) ---
-    geom_vline(data = stats_subset, 
-               aes(xintercept = median_val, colour = "Median"), 
-               linetype = "dotted", linewidth = 0.8) +
+    geom_vline(data = stats_subset,
+               aes(xintercept = median_val, colour = "Median"),
+               linetype = "dotted") +
     
-    # Aesthetics
     facet_wrap(~variable, scales = "free_y", ncol = 2) +
+    
     scale_x_log10(breaks = scales::log_breaks(n = 6)) +
+    scale_fill_manual(values = pool_colors, guide = "none") +
     
-    # Legends 
-    scale_fill_manual(values = pool_colors, guide = "none") + 
-    scale_colour_manual(
-      values = pool_colors,
-      breaks = c("Mean", "Median"), # ONLY show these in the legend
-      name = "Statistics"
-    ) +
+    scale_colour_manual(values = pool_colors,
+                        breaks = c("Mean", "Median"),
+                        name = "Statistics") +
     
-    # Labels
-    labs(x = "Age (years), log-scale", 
+    labs(x = "Age (years, log-scale)",
          y = y_label,
          title = title_text) +
-    theme_minimal(base_size = 14) +
-    theme(
-      strip.text = element_text(face = "bold"),
-      panel.grid.minor = element_blank(),
-      legend.position = "bottom"
-    )
+    
+    theme_minimal(base_size = 14)
 }
 
-# Generate Plots
+# ============================================================
+# 8. Generate plots
+# ============================================================
+
 plot_C_weighted_final <- create_stock_age_plot(
-  subset(plot_df_final, grepl("^C_", variable)), 
-  "Carbon Stock Distribution by Age",
+  subset(plot_df_final, type == "C"),
+  "Reconstructed Carbon Stock Distribution by Age",
   expression(Carbon~stocks~(g~m^{-2}))
 )
 
 plot_N_weighted_final <- create_stock_age_plot(
-  subset(plot_df_final, grepl("^N_", variable)), 
-  "Nitrogen Stock Distribution by Age",
+  subset(plot_df_final, type == "N"),
+  "Reconstructed Nitrogen Stock Distribution by Age (Mass-conserving)",
   expression(Nitrogen~stocks~(g~m^{-2}))
 )
 
+# ============================================================
+# 9. Save outputs
+# ============================================================
 
 output_dir <- "plots/allsites/4_pool"
 
-file_plot_C_weighted_final <- file.path(output_dir, "plot_C_weighted_final.png")
-file_C14plot_C_weighted_final <- file.path(output_dir, "plot_N_weighted_final.png")
+ggsave(file.path(output_dir, "plot_C_weighted_final.png"),
+       plot_C_weighted_final, width = 7, height = 5, dpi = 300, bg = "white")
 
-ggsave(filename = file_plot_C_weighted_final, plot = plot_C_weighted_final,
-       width = 7, height = 5, dpi = 300, bg = "white")
-ggsave(filename = file_C14plot_C_weighted_final, plot = plot_N_weighted_final,
-       width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(file.path(output_dir, "plot_N_weighted_final.png"),
+       plot_N_weighted_final, width = 7, height = 5, dpi = 300, bg = "white")
 
 saveRDS(plot_C_weighted_final,
-        file = file.path(output_dir, "plot_C_weighted_final.rds"))
-saveRDS(plot_N_weighted_final,
-        file = file.path(output_dir, "plot_N_weighted_final.rds"))
+        file.path(output_dir, "plot_C_weighted_final.rds"))
 
+saveRDS(plot_N_weighted_final,
+        file.path(output_dir, "plot_N_weighted_final.rds"))
