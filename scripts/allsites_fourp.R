@@ -7,7 +7,7 @@ library(FME)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-
+library(patchwork)
 ## import data
 all_data <- read.csv2(here("csv_files", "LTEnitrogen2.csv"))
 load("~/nel_sweden_agsoil_2026/mod_runs/results_325asslow.Rdata")
@@ -167,16 +167,18 @@ mc <- function(pars){
 
 #fit mod
 #mFit <- modFit(
- # f = mc,
+#  f = mc,
 #  p = inipars,
 #  method = "Nelder-Mead",
 #  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
 #  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
 #)
 
+#save(mFit, file = file.path("mod_runs", "mFit_allsites_4p.Rdata"))
+load(here::here("mod_runs/mFit_allsites_4p.Rdata"))
 
-#bestpars <- mFit$par
-#out_best <- run_mod(bestpars)
+bestpars <- mFit$par
+out_best <- run_mod(bestpars)
 Delta14Clabel <- expression(Delta^14*C)
 stocks_label <- expression(C ~ (g ~ m^{-2}))
 
@@ -303,21 +305,11 @@ saveRDS(plot_C,
 saveRDS(plot_C14,
         file = file.path(output_dir, "14C.rds"))
 
-results_4p<-list(
-  pars = bestpars,
-  output = out_best,
-  plot_C = plot_C,
-  plot_C14 = plot_C14
-)
 
-#save(results_4p, file = file.path("mod_runs", "results_allsites_4pool.Rdata"))
-load(here::here("mod_runs/results_allsites_4pool.Rdata"))
-out_best<-results_4p$output
-bestpars<-results_4p$pars
-## MCMC
+########## MCMC ############
 
-var0 <- mFit$var_ms_unweighted
-cov0 <- summary(mFit)$cov.scaled #  cov matrix can be used for jump 
+#var0 <- mFit$var_ms_unweighted
+#cov0 <- summary(mFit)$cov.scaled #  cov matrix can be used for jump 
 
 # run 
 #MCMC <- modMCMC(f=mc, p = bestpars, niter = 50000, jump = cov0*0.001, var0 = var0, wvar0 = 1, updatecov = 1000, burninlength =  1000, 
@@ -424,21 +416,9 @@ unc_df$Pool <- dplyr::case_when(
 unc_C    <- subset(unc_df, grepl("^Ct", var))
 unc_C14  <- subset(unc_df, grepl("^C14t", var))
 
-# C stocks plot final
-#### run mFit using MCMC pars
 
-# first need to redefine upper and lower as that used for MCMC 
-#mFit <- modFit(
- # f = mc,
-#  p = MCMC_bestpars,
-#  method = "Nelder-Mead",
-#  upper = c(0.1,0.2,0.01, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
-#  lower = c(0.05,0.005,0.0001,0,-20,0, 0, 0) 
-#)
+############  C stocks plot final ################
 
-# run mod
-#out_best_MCMC<- run_mod(MCMC_bestpars)
-#save(out_best_MCMC, file = file.path("mod_runs", "out_best_MCMC.Rdata"))
 load(here::here("mod_runs/out_best_MCMC.Rdata"))
 
 # plot using predictions made by mcmc
@@ -449,12 +429,12 @@ plot_C_final <- ggplot() +
               aes(x = Year, ymin = Low, ymax = High, fill = Pool),
               alpha = 0.2) +
   
-  ## --- model lines ---
+  ## --- model lines (All solid lines) ---
   geom_line(data = out_best_MCMC, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
-  geom_line(data = out_best_MCMC, aes(Year, Ct_fast, colour = "Fast"), linetype = "dashed") +
-  geom_line(data = out_best_MCMC, aes(Year, Ct_slow, colour = "Slow"), linetype = "dotted") +
-  geom_line(data = out_best_MCMC, aes(Year, Ct_inter, colour = "Inter"), linetype = "dotdash") +
-  geom_line(data = out_best_MCMC, aes(Year, Ct_loss, colour = "Loss"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_fast, colour = "Fast"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_slow, colour = "Slow"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_inter, colour = "Inter"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, Ct_loss, colour = "Loss"), linewidth = 0.8) +
   
   ## --- observations: points + error bars ---
   geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
@@ -480,20 +460,21 @@ plot_C_final <- ggplot() +
   ## --- scales ---
   scale_colour_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk,
-               "Fast" = col_fast,
-               "Slow" = col_slow,
-               "Inter" = col_inter,
-               "Loss" = col_loss)
+    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
+    labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
   
   scale_fill_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk,
-               "Fast" = col_fast,
-               "Slow" = col_slow,
-               "Inter" = col_inter,
-               "Loss" = col_loss)
+    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
+    labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
+  ) +
+  
+  guides(
+    colour = guide_legend(order = 1),
+    fill   = "none"
   ) +
   
   ggtitle("C stocks") +
@@ -502,8 +483,7 @@ plot_C_final <- ggplot() +
   theme_minimal()
 
 
-
-# 14C plot final
+############# 14C plot final ######################
 
 plot_C14_final <- ggplot() +
   
@@ -512,12 +492,12 @@ plot_C14_final <- ggplot() +
               aes(x = Year, ymin = Low, ymax = High, fill = Pool),
               alpha = 0.2) +
   
-  ## --- model lines ---
+  ## --- model lines (All solid lines) ---
   geom_line(data = out_best_MCMC, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
-  geom_line(data = out_best_MCMC, aes(Year, C14t_fast, colour = "Fast"), linetype = "dashed") +
-  geom_line(data = out_best_MCMC, aes(Year, C14t_slow, colour = "Slow"), linetype = "dotted") +
-  geom_line(data = out_best_MCMC, aes(Year, C14t_inter, colour = "Inter"), linetype = "dotdash") +
-  geom_line(data = out_best_MCMC, aes(Year, C14t_loss, colour = "Loss"), linetype = "dotted") +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_fast, colour = "Fast"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_slow, colour = "Slow"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_inter, colour = "Inter"), linewidth = 0.8) +
+  geom_line(data = out_best_MCMC, aes(Year, C14t_loss, colour = "Loss"), linewidth = 0.8) +
   
   ## --- observations ---
   geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
@@ -533,20 +513,21 @@ plot_C14_final <- ggplot() +
   ## --- scales ---
   scale_colour_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk,
-               "Fast" = col_fast,
-               "Slow" = col_slow,
-               "Inter" = col_inter,
-               "Loss" = col_loss)
+    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
+    labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
   
   scale_fill_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk,
-               "Fast" = col_fast,
-               "Slow" = col_slow,
-               "Inter" = col_inter,
-               "Loss" = col_loss)
+    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
+    labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
+  ) +
+  
+  guides(
+    colour = guide_legend(order = 1),
+    fill   = "none"
   ) +
   
   ggtitle(expression(Delta^14*C)) +
@@ -554,23 +535,47 @@ plot_C14_final <- ggplot() +
   xlab("Year") +
   theme_minimal()
 
-# save plots
+# save individual plots
 output_dir <- "plots/allsites/4_pool"
-
 file_C_final <- file.path(output_dir, "C_final.png")
 file_C14_final <- file.path(output_dir, "C14_final.png")
 
-ggsave(filename = file_C_final, plot = plot_C_final,
-       width = 7, height = 5, dpi = 300, bg = "white")
-ggsave(filename = file_C14_final, plot = plot_C14_final,
-       width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(filename = file_C_final, plot = plot_C_final, width = 7, height = 5, dpi = 300, bg = "white")
+ggsave(filename = file_C14_final, plot = plot_C14_final, width = 7, height = 5, dpi = 300, bg = "white")
 
-saveRDS(plot_C_final,
-        file = file.path(output_dir, "C_final.rds"))
-saveRDS(plot_C14_final,
-        file = file.path(output_dir, "14C_final.rds"))
+saveRDS(plot_C_final, file = file.path(output_dir, "C_final.rds"))
+saveRDS(plot_C14_final, file = file.path(output_dir, "14C_final.rds"))
 
-### Ages and transit times ###
+
+################# combined C and 14C predicted plots #################
+
+plot_C_notitle <- plot_C_final + ggtitle(NULL)
+plot_C14_notitle <- plot_C14_final + ggtitle(NULL)
+
+combined_plot <- (plot_C_notitle / plot_C14_notitle) +
+  plot_layout(guides = "collect") &
+  theme(
+    legend.position = "bottom"
+  )
+
+combined_plot <- combined_plot +
+  plot_annotation(tag_levels = "A")
+
+ggsave(
+  filename = file.path(output_dir, "C_and_C14_combined.png"),
+  plot = combined_plot,
+  width = 7,
+  height = 10,
+  dpi = 300,
+  bg = "white"
+)
+
+saveRDS(
+  combined_plot,
+  file = file.path(output_dir, "C_and_C14_combined.rds")
+)
+
+################# Ages and transit times ###############
 
 # sample mcmc pars
 set.seed(1)
@@ -620,9 +625,9 @@ ages <- seq(0, 500, by = 1)
 dens_best <- get_age_tt_dens(MCMC_bestpars, ages)
 
 # run for sampled mcmc pars 
-dens_list <- lapply(1:nrow(pars_sub), function(i){
-  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
-})
+#dens_list <- lapply(1:nrow(pars_sub), function(i){
+#  get_age_tt_dens(as.numeric(pars_sub[i, ]), ages)
+#})
 
 # save(dens_list, file = file.path("mod_runs", "dens_list.Rdata"))
 load(here::here("mod_runs/dens_list.Rdata"))
@@ -1020,8 +1025,11 @@ final_stats$variable <- recode(final_stats$variable,
 print(final_stats)
 save(final_stats, file = file.path("mod_runs", "final_stats_weighted.Rdata"))
 
+
+##################### weighted age distribution plots 
+
 # ============================================================
-# 7. PLOTTING 
+# FIX: unified color system
 # ============================================================
 
 col_fast  <- "#1b9e77"
@@ -1041,62 +1049,103 @@ pool_colors <- c(
   "Median" = "red"
 )
 
-create_stock_age_plot <- function(data_subset, title_text, y_label) {
+# ============================================================
+# FUNCTION (cleaned)
+# ============================================================
+
+create_stock_age_plot <- function(data_subset, y_label) {
   
   stats_subset <- final_stats %>%
     filter(variable %in% unique(data_subset$variable))
   
   ggplot(data_subset, aes(x = age)) +
     
-    geom_ribbon(aes(ymin = low, ymax = high, fill = variable), alpha = 0.4) +
-    geom_line(aes(y = best_val, colour = variable), linewidth = 0.8) +
+    ## ribbons (NO LEGEND)
+    geom_ribbon(
+      aes(ymin = low, ymax = high, fill = variable),
+      alpha = 0.4,
+      show.legend = FALSE
+    ) +
     
-    geom_vline(data = stats_subset,
-               aes(xintercept = mean_val, colour = "Mean"),
-               linetype = "dashed") +
+    ## lines (NO LEGEND from fill conflicts)
+    geom_line(
+      aes(y = best_val, colour = variable),
+      linewidth = 0.8
+    ) +
     
-    geom_vline(data = stats_subset,
-               aes(xintercept = median_val, colour = "Median"),
-               linetype = "dotted") +
+    ## stats lines (legend ONLY here)
+    geom_vline(
+      data = stats_subset,
+      aes(xintercept = mean_val, colour = "Mean"),
+      linetype = "dashed",
+      linewidth = 0.6
+    ) +
+    
+    geom_vline(
+      data = stats_subset,
+      aes(xintercept = median_val, colour = "Median"),
+      linetype = "dotted",
+      linewidth = 0.6
+    ) +
     
     facet_wrap(~variable, scales = "free_y", ncol = 2) +
     
     scale_x_log10(
       limits = c(1, 500),
       breaks = c(1, 5, 10, 100, 500)
-    )+
+    ) +
+    
     scale_fill_manual(values = pool_colors, guide = "none") +
     
-    scale_colour_manual(values = pool_colors,
-                        breaks = c("Mean", "Median"),
-                        name = "Statistics") +
+    scale_colour_manual(
+      values = pool_colors,
+      breaks = c("Mean", "Median"),
+      name = "Statistics"
+    ) +
     
-    labs(x = "Age (years, log-scale)",
-         y = y_label,
-         title = title_text) +
+    labs(
+      x = "Age (years, log-scale)",
+      y = y_label
+    ) +
     
-    theme_minimal(base_size = 14)
+    theme_minimal(base_size = 14) +
+    
+    theme(
+      legend.position = "bottom",
+      plot.title = element_blank()
+    )
 }
 
 # ============================================================
-# 8. Generate plots
+# PLOTS (NO TITLES)
 # ============================================================
 
 plot_C_weighted_final <- create_stock_age_plot(
   subset(plot_df_final, type == "C"),
-  "Reconstructed Carbon Stock Distribution by Age",
   expression(Carbon~stocks~(g~m^{-2}))
 )
 
 plot_N_weighted_final <- create_stock_age_plot(
   subset(plot_df_final, type == "N"),
-  "Reconstructed Nitrogen Stock Distribution by Age (Mass-conserving)",
   expression(Nitrogen~stocks~(g~m^{-2}))
 )
 
+# remove any residual facet-induced legend duplication
+plot_C_weighted_final <- plot_C_weighted_final + ggtitle(NULL)
+plot_N_weighted_final <- plot_N_weighted_final + ggtitle(NULL)
+
 # ============================================================
-# 9. Save outputs
+# COMBINED PLOT
 # ============================================================
+
+combined_CN_plot <- (plot_C_weighted_final / plot_N_weighted_final) +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    legend.position = "bottom"
+  )
+
+######### save
 
 output_dir <- "plots/allsites/4_pool"
 
@@ -1106,8 +1155,19 @@ ggsave(file.path(output_dir, "plot_C_weighted_final.png"),
 ggsave(file.path(output_dir, "plot_N_weighted_final.png"),
        plot_N_weighted_final, width = 7, height = 5, dpi = 300, bg = "white")
 
+
+ggsave(file.path(output_dir, "CN_age_distribution_combined.png"),
+       combined_CN_plot, width = 9,
+       height = 11,
+       dpi = 300,
+       bg = "white")
+
 saveRDS(plot_C_weighted_final,
         file.path(output_dir, "plot_C_weighted_final.rds"))
 
 saveRDS(plot_N_weighted_final,
         file.path(output_dir, "plot_N_weighted_final.rds"))
+
+saveRDS(
+  combined_CN_plot,
+  file.path(output_dir, "CN_age_distribution_combined.rds"))
