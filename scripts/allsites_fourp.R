@@ -1171,3 +1171,155 @@ saveRDS(plot_N_weighted_final,
 saveRDS(
   combined_CN_plot,
   file.path(output_dir, "CN_age_distribution_combined.rds"))
+
+
+
+###################################
+##CN vs age plot
+##################################
+
+# ============================================================
+# SYSTEM C:N (MCMC ensemble)
+# ============================================================
+ages <- cn_pool_list[[1]]$age  # already defined above 
+cn_sys_mat <- sapply(cn_pool_list, function(x) x$CN_system)
+
+cn_sys_df <- data.frame(
+  age = ages,
+  mean   = rowMeans(cn_sys_mat, na.rm = TRUE),
+  low    = apply(cn_sys_mat, 1, quantile, 0.025, na.rm = TRUE),
+  high   = apply(cn_sys_mat, 1, quantile, 0.975, na.rm = TRUE),
+  median = apply(cn_sys_mat, 1, median, na.rm = TRUE)
+)
+
+# Extract system stats for vertical lines (matching the stock plot style)
+cn_stats_subset <- final_stats %>%
+  filter(variable == "C system (reconstructed)")
+
+# ============================================================
+# PLOT 
+# ============================================================
+plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
+  # uncertainty ribbon (same style as stocks)
+  geom_ribbon(
+    aes(ymin = low, ymax = high),
+    fill = "black",
+    alpha = 0.2
+  ) +
+  
+  # main trajectory line
+  geom_line(
+    aes(y = mean),
+    colour = "black",
+    linewidth = 0.9
+  ) +
+  
+  # vertical mean line
+  geom_vline(
+    data = cn_stats_subset,
+    aes(xintercept = mean_val, colour = "Mean"),
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  
+  # vertical median line
+  geom_vline(
+    data = cn_stats_subset,
+    aes(xintercept = median_val, colour = "Median"),
+    linetype = "dotted",
+    linewidth = 0.6
+  ) +
+  
+  scale_x_log10(
+    limits = c(1, 500),
+    breaks = c(1, 5, 10, 100, 500)
+  ) +
+  
+  # Apply unified color system and isolate legend to statistics
+  scale_colour_manual(
+    values = pool_colors,
+    breaks = c("Mean", "Median"),
+    name = "Statistics"
+  ) +
+  
+  labs(
+    x = "Age (years, log-scale)",
+    y = "C:N ratio (system)"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+plot_CN_system
+
+# ============================================================
+# SYSTEM C:N (linear age axis)
+# ============================================================
+plot_CN_system_linear <- ggplot(cn_sys_df, aes(x = age)) +
+  # uncertainty ribbon
+  geom_ribbon(
+    aes(ymin = low, ymax = high),
+    fill = "black",
+    alpha = 0.2
+  ) +
+  
+  # main trajectory line
+  geom_line(
+    aes(y = mean),
+    colour = "black",
+    linewidth = 0.9
+  ) +
+  
+  # vertical mean line
+  geom_vline(
+    data = cn_stats_subset,
+    aes(xintercept = mean_val, colour = "Mean"),
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  
+  # vertical median line
+  geom_vline(
+    data = cn_stats_subset,
+    aes(xintercept = median_val, colour = "Median"),
+    linetype = "dotted",
+    linewidth = 0.6
+  ) +
+  
+  # Apply unified color system and isolate legend to statistics
+  scale_colour_manual(
+    values = pool_colors,
+    breaks = c("Mean", "Median"),
+    name = "Statistics"
+  ) +
+  
+  labs(
+    x = "Age (years)",
+    y = "C:N ratio (system)"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+plot_CN_system_linear
+
+# ============================================================
+# SAVE PLOTS
+# ============================================================
+ggsave(file.path(output_dir, "plot_CN_system.png"),
+       plot_CN_system, width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(plot_CN_system,
+        file.path(output_dir, "plot_CN_system.rds"))
+
+ggsave(file.path(output_dir, "plot_CN_system_linear.png"),
+       plot_CN_system_linear, width = 7, height = 5, dpi = 300, bg = "white")
+
+saveRDS(plot_CN_system_linear,
+        file.path(output_dir, "plot_CN_system_linear.rds"))
