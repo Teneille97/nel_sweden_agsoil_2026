@@ -1,0 +1,9 @@
+"Variable","Pool","Observed_SD","Prediction_error_95CI","Prediction_error_95CI_half"
+"C stocks","Bulk",1699.21,259.77,129.88
+"C stocks","Fast",1812.15,148.74,74.37
+"C stocks","Inter",617.66,144.5,72.25
+"C stocks","Slow",134.19,68.86,34.43
+"Delta14C","Bulk",48.84,7.28,3.64
+"Delta14C","Fast",NA,4.05,2.03
+"Delta14C","Inter",NA,30.19,15.1
+"Delta14C","Slow",189.63,14.95,7.48

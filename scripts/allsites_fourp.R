@@ -168,7 +168,7 @@ mc <- function(pars){
 #fit mod
 #mFit <- modFit(
 #  f = mc,
-#  p = inipars,
+#  p = inipars, #c(0.1,0.05,0.001, 0.1, -50, 0.1, 0.005, 0.005)
 #  method = "Nelder-Mead",
 #  upper = c(0.5,0.2,0.005, 0.5,0,1, 0.01, 0.01), #kf, ki, ks, alpha 21, F0ib, alpha 32, alpha 41, alpha 42
 #  lower = c(0.05,0.01,0.0001,0,-160,0, 0, 0) 
@@ -575,6 +575,127 @@ saveRDS(
   file = file.path(output_dir, "C_and_C14_combined.rds")
 )
 
+
+############################# mean observed sd and error over the years
+
+
+############# Average SD and prediction error over years ################
+
+# Function to calculate mean uncertainty
+calc_uncertainty <- function(obs_sd, pred_df, pool_name, variable){
+  
+  pred <- pred_df %>%
+    filter(Pool == pool_name)
+  
+  data.frame(
+    Variable = variable,
+    Pool = pool_name,
+    Observed_SD = ifelse(length(obs_sd) == 0, NA, mean(obs_sd, na.rm = TRUE)),
+    Prediction_error_95CI = mean(pred$High - pred$Low, na.rm = TRUE),
+    Prediction_error_95CI_half = mean((pred$High - pred$Low)/2, na.rm = TRUE)
+  )
+}
+
+
+########## C stocks ##########
+
+C_unc_summary <- bind_rows(
+  
+  calc_uncertainty(
+    Cobs_bulk$Ct_sd,
+    unc_C,
+    "Bulk",
+    "C stocks"
+  ),
+  
+  calc_uncertainty(
+    Cobs_fast$Ct_fast_sd,
+    unc_C,
+    "Fast",
+    "C stocks"
+  ),
+  
+  calc_uncertainty(
+    Cobs_inter$Ct_inter_sd,
+    unc_C,
+    "Inter",
+    "C stocks"
+  ),
+  
+  calc_uncertainty(
+    Cobs_slow$Ct_slow_sd,
+    unc_C,
+    "Slow",
+    "C stocks"
+  )
+)
+
+
+########## 14C ##########
+
+C14_unc_summary <- bind_rows(
+  
+  calc_uncertainty(
+    C14obs_bulk$C14t_sd,
+    unc_C14,
+    "Bulk",
+    "Delta14C"
+  ),
+  
+  calc_uncertainty(
+    NULL,
+    unc_C14,
+    "Fast",
+    "Delta14C"
+  ),
+  
+  calc_uncertainty(
+    NULL,
+    unc_C14,
+    "Inter",
+    "Delta14C"
+  ),
+  
+  calc_uncertainty(
+    C14obs_slow$C14t_slow_sd,
+    unc_C14,
+    "Slow",
+    "Delta14C"
+  )
+)
+
+
+########## Combine results ##########
+
+uncertainty_summary <- bind_rows(
+  C_unc_summary,
+  C14_unc_summary
+)
+
+
+# round for reporting
+uncertainty_summary <- uncertainty_summary %>%
+  mutate(
+    across(
+      c(Observed_SD,
+        Prediction_error_95CI,
+        Prediction_error_95CI_half),
+      ~round(.x, 2)
+    )
+  )
+
+print(uncertainty_summary)
+
+# save table
+write.csv(
+  uncertainty_summary,
+  file = "plots/allsites/4_pool/uncertainty_summary.csv",
+  row.names = FALSE
+)
+
+
+################################
+
 ################# Ages and transit times ###############
 
 # sample mcmc pars
@@ -688,14 +809,32 @@ save(summary_table_fmt, file = file.path("mod_runs", "summary_table_fmt.Rdata"))
 load(here::here("mod_runs/summary_table_fmt.Rdata"))
 
 
-# plot
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Prepare text labels for the mean & median values per facet
+summary_labels <- summary_table_fmt %>%
+  mutate(
+    label_text = paste0("Mean: ", mean, "\nMedian: ", median)
+  )
+
+# Prepare panel tags data frame (A, B, C, D, E)
+tag_df <- data.frame(
+  variable = unique(unc_dens_df$variable),
+  tag = LETTERS[1:length(unique(unc_dens_df$variable))]
+)
+
+# ==========================================
+# 1. Plot with manual log(age)
+# ==========================================
 plot_age_tt <- ggplot() +
   # --- ribbon ---
   geom_ribbon(data = unc_dens_df,
               aes(x = log(age), ymin = low, ymax = high),
               fill = "grey70",
               alpha = 0.5) +
-  # --- mean density curve (optional) ---
+  # --- mean density curve ---
   geom_line(data = unc_dens_df,
             aes(x = log(age), y = mean),
             colour = "black",
@@ -712,6 +851,18 @@ plot_age_tt <- ggplot() +
              aes(xintercept = log(mean), colour = "Mean"),
              linetype = "dashed",
              linewidth = 1) +
+  
+  # --- PANEL LABELS (A, B, C...) ---
+  geom_text(data = tag_df,
+            aes(x = -Inf, y = Inf, label = tag),
+            hjust = -0.5, vjust = 1.3, size = 5, fontface = "bold",
+            inherit.aes = FALSE) +
+  
+  # --- DIRECT TEXT ANNOTATION ---
+  geom_text(data = summary_labels,
+            aes(x = Inf, y = Inf, label = label_text),
+            hjust = 1.1, vjust = 1.2, size = 4, fontface = "italic") +
+  
   # --- legend control ---
   scale_colour_manual(
     name = "Statistic",
@@ -725,25 +876,26 @@ plot_age_tt <- ggplot() +
     legend.position = "bottom"
   )
 
-
+# Save Plot 1
 output_dir <- "plots/allsites/4_pool"
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 file_plot_age_tt <- file.path(output_dir, "plot_age_tt.png")
 
 png(file_plot_age_tt, width = 10, height = 8, units = "in", res = 300)
 print(plot_age_tt)
 dev.off()
 
-saveRDS(plot_age_tt,
-        file = file.path(output_dir, "plot_age_tt.rds"))
 
-# log age plots
+# ==========================================
+# 2. Plot with scale_x_log10()
+# ==========================================
 plot_log_age_tt <- ggplot() +
   # --- ribbon ---
   geom_ribbon(data = unc_dens_df,
               aes(x = age, ymin = low, ymax = high),
               fill = "grey70",
               alpha = 0.5) +
-  # --- mean density curve (optional) ---
+  # --- mean density curve ---
   geom_line(data = unc_dens_df,
             aes(x = age, y = mean),
             colour = "black",
@@ -760,6 +912,18 @@ plot_log_age_tt <- ggplot() +
              aes(xintercept = mean, colour = "Mean"),
              linetype = "dashed",
              linewidth = 1) +
+  
+  # --- PANEL LABELS (A, B, C...) ---
+  geom_text(data = tag_df,
+            aes(x = -Inf, y = Inf, label = tag),
+            hjust = -0.5, vjust = 1.3, size = 5, fontface = "bold",
+            inherit.aes = FALSE) +
+  
+  # --- DIRECT TEXT ANNOTATION ---
+  geom_text(data = summary_labels,
+            aes(x = Inf, y = Inf, label = label_text),
+            hjust = 1.1, vjust = 1.2, size = 4, fontface = "italic") +
+  
   # --- legend control ---
   scale_colour_manual(
     name = "Statistic",
@@ -768,7 +932,7 @@ plot_log_age_tt <- ggplot() +
   scale_x_log10(
     limits = c(1, 500),
     breaks = c(1, 5, 10, 100, 500)
-  )+
+  ) +
   labs(x = "Age (years), log-scale", y = "Density") +
   theme_minimal(base_size = 14) +
   theme(
@@ -777,17 +941,14 @@ plot_log_age_tt <- ggplot() +
     legend.position = "bottom"
   )
 
-output_dir <- "plots/allsites/4_pool"
+# Save Plot 2
 file_plot_log_age_tt <- file.path(output_dir, "plot_log_age_tt.png")
 
 png(file_plot_log_age_tt, width = 10, height = 8, units = "in", res = 300)
 print(plot_log_age_tt)
 dev.off()
 
-saveRDS(plot_log_age_tt,
-        file = file.path(output_dir, "plot_log_age_tt.rds"))
-
-## --- Calculate fluxes and stocks for all pools 
+################ --- Calculate fluxes and stocks for all pools ######################
 
 flux_list <- lapply(1:length(runs), function(i){
   
@@ -808,13 +969,24 @@ flux_list <- lapply(1:length(runs), function(i){
   alpha_il <- pars[8]
   
   data.frame(
-    fast_to_loss  = alpha_fl * kf * C_fast,
-    fast_to_inter = alpha_fi * kf * C_fast,
     
-    inter_to_loss = alpha_il * ki * C_inter,
+    # Gross decomposition
+    fast_decomp  = kf * C_fast,
+    inter_decomp = ki * C_inter,
+    slow_decomp  = ks * C_slow,
+    
+    # Transfers
+    fast_to_inter = alpha_fi * kf * C_fast,
     inter_to_slow = alpha_is * ki * C_inter,
     
-    slow_to_loss  = ks * C_slow
+    # External export
+    fast_to_loss  = alpha_fl * kf * C_fast,
+    inter_to_loss = alpha_il * ki * C_inter,
+    
+    # Respiration (remainder)
+    fast_resp  = (1 - alpha_fi - alpha_fl) * kf * C_fast,
+    inter_resp = (1 - alpha_is - alpha_il) * ki * C_inter,
+    slow_resp  = ks * C_slow
   )
 })
 
@@ -831,6 +1003,286 @@ flux_summary <- flux_df %>%
   pivot_longer(everything(),
                names_to = "Metric",
                values_to = "Value")
+
+#visualize
+
+############################################
+# Prepare flux summary for carbon fate plot
+############################################
+
+flux_plot_df <- flux_summary %>%
+  
+  separate(
+    Metric,
+    into = c("Flux", "Statistic"),
+    sep = "_(?=[^_]+$)"
+  ) %>%
+  
+  pivot_wider(
+    names_from = Statistic,
+    values_from = Value
+  )
+
+
+############################################
+# Assign flux fate and source SOM pool
+############################################
+
+flux_plot_df <- flux_plot_df %>%
+  mutate(
+    
+    # Carbon fate
+    Fate = case_when(
+      
+      grepl("resp", Flux) ~ "Respiration",
+      
+      grepl("to_inter|to_slow", Flux) ~ "Stabilization",
+      
+      grepl("to_loss", Flux) ~ "Export / loss",
+      
+      TRUE ~ NA_character_
+    ),
+    
+    
+    # Source pool
+    Pool = case_when(
+      
+      grepl("^fast", Flux) ~ "Fast",
+      
+      grepl("^inter", Flux) ~ "Intermediate",
+      
+      grepl("^slow", Flux) ~ "Slow",
+      
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  
+  filter(
+    !is.na(Fate),
+    !is.na(Pool)
+  )
+
+
+############################################
+# Set factor order
+############################################
+
+flux_plot_df <- flux_plot_df %>%
+  mutate(
+    
+    Fate = factor(
+      Fate,
+      levels = c(
+        "Respiration",
+        "Stabilization",
+        "Export / loss"
+      )
+    ),
+    
+    Pool = factor(
+      Pool,
+      levels = c(
+        "Fast",
+        "Intermediate",
+        "Slow"
+      )
+    )
+  )
+
+
+############################################
+# Colours
+############################################
+
+col_fast <- "#1b9e77"
+col_slow <- "#BF40BF"
+col_inter <- "#0000FF"
+
+
+############################################
+# Plot: carbon fate by source SOM pool
+############################################
+
+fluxplot<-ggplot(
+  flux_plot_df,
+  aes(
+    x = Fate,
+    y = median,
+    fill = Pool
+  )
+) +
+  
+  geom_col(
+    position = position_dodge(
+      width = 0.8
+    ),
+    width = 0.7
+  ) +
+  
+  geom_errorbar(
+    aes(
+      ymin = lci,
+      ymax = uci
+    ),
+    position = position_dodge(
+      width = 0.8
+    ),
+    width = 0.2,
+    linewidth = 0.8
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      "Fast" = col_fast,
+      "Intermediate" = col_inter,
+      "Slow" = col_slow
+    )
+  ) +
+  
+  labs(
+    x = NULL,
+    y = expression(
+      "Carbon flux (g C m"^-2*" yr"^-1*")"
+    ),
+    fill = "Source SOM pool"
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+
+fluxplot_path <- file.path(output_dir, "flux_plot.png")
+
+png(fluxplot_path, width = 10, height = 8, units = "in", res = 300)
+print(fluxplot)
+dev.off()
+
+############## efficiency
+## ============================================================
+## Calculate posterior efficiencies
+## ============================================================
+
+efficiency_list <- lapply(1:length(runs), function(i){
+  
+  pars <- as.numeric(MCMC$pars[i, ])
+  run  <- runs[[i]]
+  
+  # final pool sizes (quasi steady state)
+  C_fast  <- tail(run$Ct_fast, 1)
+  C_inter <- tail(run$Ct_inter, 1)
+  C_slow  <- tail(run$Ct_slow, 1)
+  
+  # decomposition rates
+  kf <- pars[1]
+  ki <- pars[2]
+  ks <- pars[3]
+  
+  # transfer coefficients
+  alpha_fi <- pars[4]   # fast -> intermediate
+  alpha_is <- pars[6]   # intermediate -> slow
+  alpha_fl <- pars[7]   # fast -> loss
+  alpha_il <- pars[8]   # intermediate -> loss
+  
+  
+  ## -------------------------------
+  ## FAST POOL
+  ## -------------------------------
+  
+  fast_decomp <- kf * C_fast
+  
+  fast_stabilization <- alpha_fi * kf * C_fast
+  
+  fast_export <- alpha_fl * kf * C_fast
+  
+  fast_resp <- fast_decomp -
+    fast_stabilization -
+    fast_export
+  
+  
+  ## -------------------------------
+  ## INTERMEDIATE POOL
+  ## -------------------------------
+  
+  inter_decomp <- ki * C_inter
+  
+  inter_stabilization <- alpha_is * ki * C_inter
+  
+  inter_export <- alpha_il * ki * C_inter
+  
+  inter_resp <- inter_decomp -
+    inter_stabilization -
+    inter_export
+  
+  
+  ## -------------------------------
+  ## SLOW POOL
+  ## -------------------------------
+  
+  slow_decomp <- ks * C_slow
+  
+  slow_resp <- slow_decomp
+  
+  
+  data.frame(
+    
+    fast_resp_eff =
+      fast_resp / fast_decomp,
+    
+    fast_stab_eff =
+      fast_stabilization / fast_decomp,
+    
+    fast_export_eff =
+      fast_export / fast_decomp,
+    
+    
+    inter_resp_eff =
+      inter_resp / inter_decomp,
+    
+    inter_stab_eff =
+      inter_stabilization / inter_decomp,
+    
+    inter_export_eff =
+      inter_export / inter_decomp,
+    
+    
+    slow_resp_eff = 1
+    
+  )
+})
+
+
+efficiency_df <- do.call(rbind, efficiency_list)
+
+
+## ============================================================
+## Summarize posterior distributions
+## ============================================================
+
+efficiency_summary <- efficiency_df %>%
+  summarise(
+    across(
+      everything(),
+      list(
+        median = ~median(.),
+        lci = ~quantile(., 0.05),
+        uci = ~quantile(., 0.95)
+      )
+    )
+  ) %>%
+  pivot_longer(
+    everything(),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+
+efficiency_summary
 
 
 # ============================================================
@@ -1178,6 +1630,24 @@ saveRDS(
 ##CN vs age plot
 ##################################
 
+###################################
+## Create CN age distributions
+###################################
+
+cn_pool_list <- lapply(seq_along(mcmc_stock_list), function(i){
+  
+  x <- mcmc_stock_list[[i]]
+  
+  data.frame(
+    age = x$age,
+    
+    CN_fast = x$C_fast_stock / x$N_fast_stock,
+    CN_inter = x$C_inter_stock / x$N_inter_stock,
+    CN_slow = x$C_slow_stock / x$N_slow_stock,
+    
+    CN_system = x$C_system_stock / x$N_system_stock
+  )
+})
 # ============================================================
 # SYSTEM C:N (MCMC ensemble)
 # ============================================================
@@ -1196,38 +1666,65 @@ cn_sys_df <- data.frame(
 cn_stats_subset <- final_stats %>%
   filter(variable == "C system (reconstructed)")
 
+
+# calculate CN statistics for annotation
+cn_stats_labels <- cn_stats_subset %>%
+  mutate(
+    label_text = paste0(
+      "Mean = ", round(mean_val, 1),
+      "\nMedian = ", round(median_val, 1)
+    )
+  )
+
+
 # ============================================================
-# PLOT 
+# LOG AGE VERSION
 # ============================================================
+
 plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
-  # uncertainty ribbon (same style as stocks)
+  
+  # uncertainty ribbon
   geom_ribbon(
     aes(ymin = low, ymax = high),
     fill = "black",
     alpha = 0.2
   ) +
   
-  # main trajectory line
+  # mean CN trajectory
   geom_line(
     aes(y = mean),
     colour = "black",
     linewidth = 0.9
   ) +
   
-  # vertical mean line
+  # mean and median vertical lines
   geom_vline(
     data = cn_stats_subset,
     aes(xintercept = mean_val, colour = "Mean"),
-    linetype = "dashed",
-    linewidth = 0.6
+    linetype = "dotted",
+    linewidth = 1
   ) +
   
-  # vertical median line
   geom_vline(
     data = cn_stats_subset,
     aes(xintercept = median_val, colour = "Median"),
     linetype = "dotted",
-    linewidth = 0.6
+    linewidth = 1
+  ) +
+  
+  # horizontal text annotations
+  geom_text(
+    data = cn_stats_labels,
+    aes(
+      x = mean_val,
+      y = Inf,
+      label = label_text
+    ),
+    hjust = -0.05,
+    vjust = 1.3,
+    size = 5,
+    fontface = "italic",
+    inherit.aes = FALSE
   ) +
   
   scale_x_log10(
@@ -1235,9 +1732,11 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
     breaks = c(1, 5, 10, 100, 500)
   ) +
   
-  # Apply unified color system and isolate legend to statistics
   scale_colour_manual(
-    values = pool_colors,
+    values = c(
+      "Mean" = "blue",
+      "Median" = "red"
+    ),
     breaks = c("Mean", "Median"),
     name = "Statistics"
   ) +
@@ -1253,12 +1752,13 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
     legend.position = "bottom"
   )
 
-plot_CN_system
 
 # ============================================================
-# SYSTEM C:N (linear age axis)
+# LINEAR AGE VERSION
 # ============================================================
+
 plot_CN_system_linear <- ggplot(cn_sys_df, aes(x = age)) +
+  
   # uncertainty ribbon
   geom_ribbon(
     aes(ymin = low, ymax = high),
@@ -1266,32 +1766,48 @@ plot_CN_system_linear <- ggplot(cn_sys_df, aes(x = age)) +
     alpha = 0.2
   ) +
   
-  # main trajectory line
+  # mean CN trajectory
   geom_line(
     aes(y = mean),
     colour = "black",
     linewidth = 0.9
   ) +
   
-  # vertical mean line
+  # mean and median vertical lines
   geom_vline(
     data = cn_stats_subset,
     aes(xintercept = mean_val, colour = "Mean"),
-    linetype = "dashed",
-    linewidth = 0.6
+    linetype = "dotted",
+    linewidth = 1
   ) +
   
-  # vertical median line
   geom_vline(
     data = cn_stats_subset,
     aes(xintercept = median_val, colour = "Median"),
     linetype = "dotted",
-    linewidth = 0.6
+    linewidth = 1
   ) +
   
-  # Apply unified color system and isolate legend to statistics
+  # horizontal text annotations
+  geom_text(
+    data = cn_stats_labels,
+    aes(
+      x = mean_val,
+      y = Inf,
+      label = label_text
+    ),
+    hjust = -0.05,
+    vjust = 1.3,
+    size = 5,
+    fontface = "italic",
+    inherit.aes = FALSE
+  ) +
+  
   scale_colour_manual(
-    values = pool_colors,
+    values = c(
+      "Mean" = "blue",
+      "Median" = "red"
+    ),
     breaks = c("Mean", "Median"),
     name = "Statistics"
   ) +
@@ -1307,7 +1823,47 @@ plot_CN_system_linear <- ggplot(cn_sys_df, aes(x = age)) +
     legend.position = "bottom"
   )
 
+
+# ============================================================
+# DISPLAY
+# ============================================================
+
+plot_CN_system
 plot_CN_system_linear
+
+
+# ============================================================
+# SAVE
+# ============================================================
+
+ggsave(
+  file.path(output_dir, "plot_CN_system.png"),
+  plot_CN_system,
+  width = 7,
+  height = 5,
+  dpi = 300,
+  bg = "white"
+)
+
+saveRDS(
+  plot_CN_system,
+  file.path(output_dir, "plot_CN_system.rds")
+)
+
+
+ggsave(
+  file.path(output_dir, "plot_CN_system_linear.png"),
+  plot_CN_system_linear,
+  width = 7,
+  height = 5,
+  dpi = 300,
+  bg = "white"
+)
+
+saveRDS(
+  plot_CN_system_linear,
+  file.path(output_dir, "plot_CN_system_linear.rds")
+)
 
 # ============================================================
 # SAVE PLOTS
@@ -1323,3 +1879,108 @@ ggsave(file.path(output_dir, "plot_CN_system_linear.png"),
 
 saveRDS(plot_CN_system_linear,
         file.path(output_dir, "plot_CN_system_linear.rds"))
+
+##########################
+#compare CN
+library(dplyr)
+library(tidyr)
+library(emmeans)
+
+# ------------------------------------------------------
+# Final year observations
+# ------------------------------------------------------
+
+final_year <- max(all_data$Year)
+
+final_dat <- all_data %>%
+  filter(Year == final_year)
+
+# create C and N stocks
+final_pools <- final_dat %>%
+  select(LTE,
+         Temperature...C.,
+         C_stocks_gm2,
+         N_stocks_gm2) %>%
+  pivot_wider(
+    names_from = Temperature...C.,
+    values_from = c(C_stocks_gm2, N_stocks_gm2)
+  ) %>%
+  mutate(
+    
+    C_fast  = C_stocks_gm2_Soil - C_stocks_gm2_325,
+    C_inter = C_stocks_gm2_325  - C_stocks_gm2_400,
+    C_slow  = C_stocks_gm2_400,
+    
+    N_fast  = N_stocks_gm2_Soil - N_stocks_gm2_325,
+    N_inter = N_stocks_gm2_325  - N_stocks_gm2_400,
+    N_slow  = N_stocks_gm2_400,
+    
+    CN_fast  = C_fast / N_fast,
+    CN_inter = C_inter / N_inter,
+    CN_slow  = C_slow / N_slow
+  )
+
+# ------------------------------------------------------
+# Long format
+# ------------------------------------------------------
+
+CN_long <- final_pools %>%
+  select(LTE, CN_fast, CN_inter, CN_slow) %>%
+  pivot_longer(
+    -LTE,
+    names_to = "Pool",
+    values_to = "CN"
+  )
+
+CN_long$Pool <- factor(
+  CN_long$Pool,
+  levels = c("CN_fast","CN_inter","CN_slow"),
+  labels = c("Fast","Intermediate","Slow")
+)
+
+# ------------------------------------------------------
+# Repeated measures ANOVA
+# ------------------------------------------------------
+
+mod <- aov(
+  CN ~ Pool + Error(LTE/Pool),
+  data = CN_long
+)
+
+summary(mod)
+
+# ------------------------------------------------------
+# Pairwise comparisons
+# ------------------------------------------------------
+
+lm_mod <- lm(CN ~ LTE + Pool, data = CN_long)
+
+pairs(
+  emmeans(lm_mod, "Pool"),
+  adjust = "tukey"
+)
+
+friedman.test(
+  CN ~ Pool | LTE,
+  data = CN_complete
+)
+
+pairwise.wilcox.test( #doesnt make sense to report because too few samples
+  CN_long$CN,
+  CN_long$Pool,
+  paired = TRUE,
+  p.adjust.method = "holm"
+)
+
+#check 
+CN_long %>%
+  arrange(LTE, Pool)
+
+# report bulk CN vs system age relationship
+cn_age_lm <- lm(
+  mean ~ log10(age),
+  data = cn_sys_df %>% filter(age > 0)
+)
+
+summary(cn_age_lm)
+
