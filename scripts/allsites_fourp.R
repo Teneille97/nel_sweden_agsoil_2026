@@ -422,14 +422,17 @@ unc_C14  <- subset(unc_df, grepl("^C14t", var))
 load(here::here("mod_runs/out_best_MCMC.Rdata"))
 
 # plot using predictions made by mcmc
+
 plot_C_final <- ggplot() +
   
   ## --- MCMC ribbons (model uncertainty) ---
+  
   geom_ribbon(data = unc_C,
               aes(x = Year, ymin = Low, ymax = High, fill = Pool),
               alpha = 0.2) +
   
   ## --- model lines (All solid lines) ---
+  
   geom_line(data = out_best_MCMC, aes(Year, Ct, colour = "Bulk"), linewidth = 1) +
   geom_line(data = out_best_MCMC, aes(Year, Ct_fast, colour = "Fast"), linewidth = 0.8) +
   geom_line(data = out_best_MCMC, aes(Year, Ct_slow, colour = "Slow"), linewidth = 0.8) +
@@ -437,6 +440,7 @@ plot_C_final <- ggplot() +
   geom_line(data = out_best_MCMC, aes(Year, Ct_loss, colour = "Loss"), linewidth = 0.8) +
   
   ## --- observations: points + error bars ---
+  
   geom_point(data = Cobs_bulk, aes(Year, Ct, colour = "Bulk")) +
   geom_errorbar(data = Cobs_bulk,
                 aes(Year, ymin = Ct - Ct_sd, ymax = Ct + Ct_sd, colour = "Bulk"),
@@ -458,16 +462,25 @@ plot_C_final <- ggplot() +
                 width = 0.5) +
   
   ## --- scales ---
+  
   scale_colour_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss),
     breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
     labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
   
   scale_fill_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss),
     breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
     labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
@@ -477,10 +490,40 @@ plot_C_final <- ggplot() +
     fill   = "none"
   ) +
   
-  ggtitle("C stocks") +
   ylab(stocks_label) +
   xlab("Year") +
-  theme_minimal()
+  
+  ## --- clean publication-style theme ---
+  
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    ),
+    axis.line = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    axis.ticks = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    axis.text = element_text(
+      colour = "black",
+      size = 10
+    ),
+    axis.title = element_text(
+      colour = "black",
+      size = 11
+    ),
+    plot.title = element_text(
+      colour = "black",
+      size = 12,
+      face = "bold"
+    )
+  )
 
 
 ############# 14C plot final ######################
@@ -488,11 +531,13 @@ plot_C_final <- ggplot() +
 plot_C14_final <- ggplot() +
   
   ## --- MCMC ribbons ---
+  
   geom_ribbon(data = unc_C14,
               aes(x = Year, ymin = Low, ymax = High, fill = Pool),
               alpha = 0.2) +
   
   ## --- model lines (All solid lines) ---
+  
   geom_line(data = out_best_MCMC, aes(Year, C14t, colour = "Bulk"), linewidth = 1) +
   geom_line(data = out_best_MCMC, aes(Year, C14t_fast, colour = "Fast"), linewidth = 0.8) +
   geom_line(data = out_best_MCMC, aes(Year, C14t_slow, colour = "Slow"), linewidth = 0.8) +
@@ -500,6 +545,7 @@ plot_C14_final <- ggplot() +
   geom_line(data = out_best_MCMC, aes(Year, C14t_loss, colour = "Loss"), linewidth = 0.8) +
   
   ## --- observations ---
+  
   geom_point(data = C14obs_bulk, aes(Year, C14t, colour = "Bulk")) +
   geom_errorbar(data = C14obs_bulk,
                 aes(Year, ymin = C14t - C14t_sd, ymax = C14t + C14t_sd, colour = "Bulk"),
@@ -507,20 +553,31 @@ plot_C14_final <- ggplot() +
   
   geom_point(data = C14obs_slow, aes(Year, C14t_slow, colour = "Slow")) +
   geom_errorbar(data = C14obs_slow,
-                aes(Year, ymin = C14t_slow - C14t_slow_sd, ymax = C14t_slow + C14t_slow_sd, colour = "Slow"),
+                aes(Year, ymin = C14t_slow - C14t_slow_sd,
+                    ymax = C14t_slow + C14t_slow_sd,
+                    colour = "Slow"),
                 width = 0.5) +
   
   ## --- scales ---
+  
   scale_colour_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss),
     breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
     labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
   
   scale_fill_manual(
     name = "Pool",
-    values = c("Bulk" = col_bulk, "Fast" = col_fast, "Slow" = col_slow, "Inter" = col_inter, "Loss" = col_loss),
+    values = c("Bulk" = col_bulk,
+               "Fast" = col_fast,
+               "Slow" = col_slow,
+               "Inter" = col_inter,
+               "Loss" = col_loss),
     breaks = c("Bulk", "Fast", "Slow", "Inter", "Loss"),
     labels = c("Bulk", "Fast", "Slow", "Inter", "Loss")
   ) +
@@ -530,10 +587,41 @@ plot_C14_final <- ggplot() +
     fill   = "none"
   ) +
   
-  ggtitle(expression(Delta^14*C)) +
   ylab(Delta14Clabel) +
   xlab("Year") +
-  theme_minimal()
+  
+  ## --- clean publication-style theme ---
+  
+  theme_minimal() +
+  theme(
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    ),
+    axis.line = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    axis.ticks = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    axis.text = element_text(
+      colour = "black",
+      size = 10
+    ),
+    axis.title = element_text(
+      colour = "black",
+      size = 11
+    ),
+    plot.title = element_text(
+      colour = "black",
+      size = 12,
+      face = "bold"
+    )
+  )
+
 
 # save individual plots
 output_dir <- "plots/allsites/4_pool"
@@ -1684,6 +1772,7 @@ cn_stats_labels <- cn_stats_subset %>%
 plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
   
   # uncertainty ribbon
+  
   geom_ribbon(
     aes(ymin = low, ymax = high),
     fill = "black",
@@ -1691,6 +1780,7 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
   ) +
   
   # mean CN trajectory
+  
   geom_line(
     aes(y = mean),
     colour = "black",
@@ -1698,6 +1788,7 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
   ) +
   
   # mean and median vertical lines
+  
   geom_vline(
     data = cn_stats_subset,
     aes(xintercept = mean_val, colour = "Mean"),
@@ -1713,6 +1804,7 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
   ) +
   
   # horizontal text annotations
+  
   geom_text(
     data = cn_stats_labels,
     aes(
@@ -1748,9 +1840,46 @@ plot_CN_system <- ggplot(cn_sys_df, aes(x = age)) +
   
   theme_minimal(base_size = 14) +
   theme(
+    # thin black panel border
+    panel.border = element_rect(
+      colour = "black",
+      fill = NA,
+      linewidth = 0.5
+    ),
+    
+    # black axis lines
+    axis.line = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    
+    # black tick marks
+    axis.ticks = element_line(
+      colour = "black",
+      linewidth = 0.4
+    ),
+    
+    # black axis numbers
+    axis.text = element_text(
+      colour = "black",
+      size = 12
+    ),
+    
+    # black axis labels
+    axis.title = element_text(
+      colour = "black",
+      size = 14
+    ),
+    
+    # keep minor gridlines removed
     panel.grid.minor = element_blank(),
+    
+    # legend
     legend.position = "bottom"
   )
+
+
+
 
 
 # ============================================================
