@@ -1589,14 +1589,25 @@ pool_colors <- c(
   "Median" = "red"
 )
 
+
 # ============================================================
-# FUNCTION (cleaned)
+# FUNCTION
 # ============================================================
 
-create_stock_age_plot <- function(data_subset, y_label) {
+create_stock_age_plot <- function(data_subset, 
+                                  y_label, 
+                                  text_x_coords = NULL, 
+                                  var_labels = NULL) {
   
   stats_subset <- final_stats %>%
     filter(variable %in% unique(data_subset$variable))
+  
+  # Assign custom x position per panel text if supplied
+  if (!is.null(text_x_coords)) {
+    stats_subset$text_x <- text_x_coords[as.character(stats_subset$variable)]
+  } else if (!"text_x" %in% colnames(stats_subset)) {
+    stats_subset$text_x <- 10  # Fallback default
+  }
   
   ggplot(data_subset, aes(x = age)) +
     
@@ -1607,13 +1618,13 @@ create_stock_age_plot <- function(data_subset, y_label) {
       show.legend = FALSE
     ) +
     
-    ## lines (NO LEGEND from fill conflicts)
+    ## lines
     geom_line(
       aes(y = best_val, colour = variable),
       linewidth = 0.8
     ) +
     
-    ## stats lines (legend ONLY here)
+    ## stats lines
     geom_vline(
       data = stats_subset,
       aes(xintercept = mean_val, colour = "Mean"),
@@ -1628,14 +1639,42 @@ create_stock_age_plot <- function(data_subset, y_label) {
       linewidth = 0.6
     ) +
     
-    facet_wrap(~variable, scales = "free_y", ncol = 2) +
+    ## ========================================================
+  ## MEAN / MEDIAN TEXT (Custom X per panel)
+  ## ========================================================
+  geom_text(
+    data = stats_subset,
+    aes(
+      x = text_x,
+      y = Inf,
+      label = paste0(
+        "Mean = ", round(mean_val, 1), " y\n",
+        "Median = ", round(median_val, 1), " y"
+      )
+    ),
+    hjust = 0,
+    vjust = 1.3,
+    size = 4.2,
+    colour = "black",
+    inherit.aes = FALSE
+  ) +
+    
+    facet_wrap(
+      ~variable,
+      scales = "free_y",
+      ncol = 2,
+      labeller = if (!is.null(var_labels)) labeller(variable = var_labels) else "label_value"
+    ) +
     
     scale_x_log10(
       limits = c(1, 500),
       breaks = c(1, 5, 10, 100, 500)
     ) +
     
-    scale_fill_manual(values = pool_colors, guide = "none") +
+    scale_fill_manual(
+      values = pool_colors,
+      guide = "none"
+    ) +
     
     scale_colour_manual(
       values = pool_colors,
@@ -1652,10 +1691,11 @@ create_stock_age_plot <- function(data_subset, y_label) {
     
     theme(
       legend.position = "bottom",
-      plot.title = element_blank()
+      plot.title = element_blank(),
+      # Add thin black border around each panel
+      panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5)
     )
 }
-
 # ============================================================
 # PLOTS (NO TITLES)
 # ============================================================
@@ -1681,6 +1721,191 @@ plot_N_weighted_final <- plot_N_weighted_final + ggtitle(NULL)
 combined_CN_plot <- (plot_C_weighted_final / plot_N_weighted_final) +
   plot_layout(guides = "collect") +
   plot_annotation(tag_levels = "A") &
+  theme(
+    legend.position = "bottom"
+  )
+
+
+
+######################
+## trying another plotting style for better text placement
+
+create_stock_age_plot <- function(data_subset, 
+                                  y_label, 
+                                  text_x_coords = NULL, 
+                                  var_labels = NULL) {
+  
+  stats_subset <- final_stats %>%
+    filter(variable %in% unique(data_subset$variable))
+  
+  # Assign custom x position per panel text if supplied
+  if (!is.null(text_x_coords)) {
+    stats_subset$text_x <- text_x_coords[as.character(stats_subset$variable)]
+  } else if (!"text_x" %in% colnames(stats_subset)) {
+    stats_subset$text_x <- 10  # Fallback default
+  }
+  
+  ggplot(data_subset, aes(x = age)) +
+    
+    ## ribbons (NO LEGEND)
+    geom_ribbon(
+      aes(ymin = low, ymax = high, fill = variable),
+      alpha = 0.4,
+      show.legend = FALSE
+    ) +
+    
+    ## lines
+    geom_line(
+      aes(y = best_val, colour = variable),
+      linewidth = 0.8
+    ) +
+    
+    ## stats lines
+    geom_vline(
+      data = stats_subset,
+      aes(xintercept = mean_val, colour = "Mean"),
+      linetype = "dashed",
+      linewidth = 1.0
+    ) +
+    
+    geom_vline(
+      data = stats_subset,
+      aes(xintercept = median_val, colour = "Median"),
+      linetype = "dotted",
+      linewidth = 1.0
+    ) +
+    
+    ## ========================================================
+  ## MEAN / MEDIAN TEXT (Custom X per panel)
+  ## ========================================================
+  geom_text(
+    data = stats_subset,
+    aes(
+      x = text_x,
+      y = Inf,
+      label = paste0(
+        "Mean = ", round(mean_val, 1), " y\n",
+        "Median = ", round(median_val, 1), " y"
+      )
+    ),
+    hjust = 0,
+    vjust = 2,
+    size = 4.2,
+    colour = "black",
+    inherit.aes = FALSE
+  ) +
+    
+    facet_wrap(
+      ~variable,
+      scales = "free_y",
+      ncol = 2,
+      labeller = if (!is.null(var_labels)) labeller(variable = var_labels) else "label_value",
+    ) +
+    
+    
+    scale_x_log10(
+      limits = c(1, 500),
+      breaks = c(1, 5, 10, 100, 500)
+    ) +
+    
+    scale_fill_manual(
+      values = pool_colors,
+      guide = "none"
+    ) +
+    
+    scale_colour_manual(
+      values = pool_colors,
+      breaks = c("Mean", "Median"),
+      name = "Statistics"
+    ) +
+    
+    labs(
+      x = "Age (years, log-scale)",
+      y = y_label
+    ) +
+    
+    theme_minimal(base_size = 14) +
+    
+    theme(
+      legend.position = "bottom",
+      plot.title = element_blank(),
+      
+      # Thin black border around every facet
+      panel.border = element_rect(
+        colour = "black",
+        fill = NA,
+        linewidth = 0.5
+      ),
+      
+      # Black tick marks
+      axis.ticks = element_line(
+        colour = "black",
+        linewidth = 0.6
+      ),
+      
+      axis.ticks.length = unit(3, "pt"),
+      
+      # Black axis text
+      axis.text = element_text(
+        colour = "black"
+      ),
+      
+      # Black axis titles
+      axis.title = element_text(
+        colour = "black"
+      )
+    )
+}
+
+# 1. Custom text X positions for each panel
+text_x_C <- c(
+  "C fast"                = 80,    # Panel A text x position
+  "C intermediate"                = 1,    # Panel B text x position
+  "C slow"                = 1,   # Panel C text x position
+  "C system (reconstructed)" = 1    # Panel D text x position
+)
+
+text_x_N <- c(
+  "N fast"                = 80,    # Panel E text x position
+  "N intermediate"                = 1,    # Panel F text x position
+  "N slow"                = 1,   # Panel G text x position
+  "N system (reconstructed)" = 1    # Panel H text x position
+)
+
+# 2. Custom clean titles (Carbon/Nitrogen full names & no "[reconstructed]")
+var_labels_C <- c(
+  "C fast"                = "(A) Carbon fast",
+  "C intermediate"                = "(B) Carbon intermediate",
+  "C slow"                = "(C) Carbon slow",
+  "C system (reconstructed)" = "(D) Carbon system"      # Panel D clean heading
+)
+
+var_labels_N <- c(
+  "N fast"                = "(E) Nitrogen fast",
+  "N intermediate"                = "(F) Nitrogen intermediate",
+  "N slow"                = "(G) Nitrogen slow",
+  "N system (reconstructed)" = "(H) Nitrogen system"    # Panel H clean heading
+)
+
+# 3. Create Carbon Plot
+plot_C_weighted_final <- create_stock_age_plot(
+  data_subset   = subset(plot_df_final, type == "C"),
+  y_label       = expression(Carbon~stocks~(g~m^{-2})),
+  text_x_coords = text_x_C,
+  var_labels    = var_labels_C
+)
+
+# 4. Create Nitrogen Plot
+plot_N_weighted_final <- create_stock_age_plot(
+  data_subset   = subset(plot_df_final, type == "N"),
+  y_label       = expression(Nitrogen~stocks~(g~m^{-2})),
+  text_x_coords = text_x_N,
+  var_labels    = var_labels_N
+)
+
+# 5. Combined Plot (patchwork automatically labels panels A through H across both plots)
+combined_CN_plot <- (plot_C_weighted_final / plot_N_weighted_final) +
+  plot_layout(guides = "collect") &
   theme(
     legend.position = "bottom"
   )
@@ -1713,10 +1938,6 @@ saveRDS(
   file.path(output_dir, "CN_age_distribution_combined.rds"))
 
 
-
-###################################
-##CN vs age plot
-##################################
 
 ###################################
 ## Create CN age distributions
