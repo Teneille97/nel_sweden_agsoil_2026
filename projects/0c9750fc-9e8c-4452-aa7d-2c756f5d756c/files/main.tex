@@ -1,4 +1,9 @@
 \documentclass[bg, manuscript]{copernicus}
+
+\usepackage{booktabs}
+\usepackage{textcomp}
+\usepackage{caption}
+
 \begin{document}
 
 \title{Radiocarbon and thermal fractionation reveal decoupled nitrogen and carbon persistence in soil organic matter: A modeling study of a long-term agricultural trial in Sweden}
@@ -208,66 +213,137 @@ This study was supported by funding from the relevant funding agencies. We thank
 
 %% TABLES
 
-  %%% TABLES
-%%%
-%%% The different columns must be seperated with a & command and should
-%%% end with \\ to identify the column brake.
-%
-%%% ONE-COLUMN TABLE
-%
-%%t
-%\begin{table}[t]
-%\caption{TEXT}
-%\begin{tabular}{column = lcr}
-%\tophline
-%
-%\middlehline
-%
-%\bottomhline
-%\end{tabular}
-%\belowtable{} % Table Footnotes
-%\end{table}
-%
-%%% TWO-COLUMN TABLE
-%
-%%t
-%\begin{table*}[t]
-%\caption{TEXT}
-%\begin{tabular}{column = lcr}
-%\tophline
-%
-%\middlehline
-%
-%\bottomhline
-%\end{tabular}
-%\belowtable{} % Table Footnotes
-%\end{table*}
-%
-%%% LANDSCAPE TABLE
-%
-%%t
-%\begin{sidewaystable*}[t]
-%\caption{TEXT}
-%\begin{tabular}{column = lcr}
-%\tophline
-%
-%\middlehline
-%
-%\bottomhline
-%\end{tabular}
-%\belowtable{} % Table Footnotes
-%\end{sidewaystable*}
-%
+%%% TABLE 1
+  
+\begin{table*}[t]
+\caption{Location, climate properties and date of initiation (Year) of the four sites. MAT and MAP represent mean annual temperature ($^\circ$C) and mean annual precipitation (mm), respectively. The climate data are derived from the weather stations of the Swedish Meteorological and Hydrological Institute for the periods 1961--1990 and 1991--2020.}
+\begin{tabular}{lccccccccc}
+\tophline
+Site & No. & Year & Lat. & Long. & Elev. & MAT & MAT & MAP & MAP \\
+ & & & ($^\circ$N) & ($^\circ$E) & (m) & 1961--1990 & 1991--2020 & 1961--1990 & 1991--2020 \\
+\middlehline
+Orup & M2 & 1957 & 55.82 & 13.50 & 113 & 7.0 & 8.1 & 693 & 755 \\
+Örja & M4 & 1957 & 55.73 & 13.05 & 73 & 7.7 & 8.8 & 665 & 676 \\
+Ekebo & M6 & 1957 & 55.99 & 12.88 & 72 & 7.6 & 8.7 & 703 & 722 \\
+Bjertorp & R94 & 1966 & 58.24 & 13.07 & 80 & 6.1 & 7.3 & 558 & 584 \\
+\bottomhline
+\end{tabular}
+\belowtable{}
+\end{table*}
+
+\clearpage
+
+%%% TABLE 2
+\begin{table*}[t]
+\caption{Soil properties of the soils of the four sites. The chemical soil properties refer to the uppermost 20\,cm of the soils and are means calculated across all treatments and across all years.}
+\begin{tabular}{lcccccc}
+\tophline
+Site name & Soil order & \multicolumn{3}{c}{Texture (\%)} & Bulk density & pH \\
+ & & Clay & Silt & Sand & ($\text{g}\,\text{cm}^{-3}$) & \\
+\middlehline
+Orup & Haplic Phaeozem & 12 & 29 & 59 & 1.51 & 6.1 \\
+Örja & Eutric Cambisol & 23 & 25 & 52 & 1.72 & 7.1 \\
+Ekebo & Eutric Cambisol & 18 & 35 & 47 & 1.44 & 6.4 \\
+Bjertorp & Not determined & 30 & 54 & 16 & 1.37 & 6.4 \\
+\bottomhline
+\end{tabular}
+\end{table*}
+\clearpage
+
+%%% TABLE 3
+\begin{table}[t]
+\caption{Best-fit parameter estimates for the three-pool soil organic matter decomposition model simultaneously fitted to bulk soil organic carbon (SOC) stocks, bulk $\Delta^{14}\text{C}$, and thermally defined fast, intermediate and slow SOC pools across the four long-term agricultural field experiments. Parameters $p_1$--$p_6$ represent $k_{\text{f}}$, $k_{\text{i}}$, $k_{\text{s}}$ (fast, intermediate and slow pool decomposition rates), $a_{21}$ (coefficient indicating proportion of C transfer from fast to slow pool), $F_{0\text{ib}}$ (a value that is subtracted from initial bulk radiocarbon measurement to find the initial intermediate radiocarbon value), $a_{32}$ (transfer coefficient from intermediate to slow pool), $a_{41}$ and $a_{42}$ (transfer from fast and intermediate pools to the ``loss'' pool).}
+\begin{tabular}{lc}
+\tophline
+Par & Value \\
+\middlehline
+$k_{\text{f}}$ & 0.050671 \\
+$k_{\text{i}}$ & 0.00687 \\
+$k_{\text{s}}$ & 0.008282 \\
+$a_{21}$ & 0.127815 \\
+$F_{0\text{ib}}$ & $-3.17351$ \\
+$a_{32}$ & 0.127896 \\
+$a_{41}$ & 0.003507 \\
+$a_{42}$ & 0.005564 \\
+\bottomhline
+\end{tabular}
+\end{table}
+\clearpage
+
+%%% TABLE 4
+\begin{table}[t]
+\caption{Mean observed standard deviation (SD) of measured soil organic carbon stocks and $\Delta^{14}\text{C}$ values, together with the mean half-width of the posterior 95\% confidence interval (prediction error) of model predictions for each soil organic matter pool.}
+\begin{tabular}{llcc}
+\tophline
+Variable & Pool & Observed SD & Prediction \\
+\middlehline
+C stocks & Bulk & 1699.21 & 129.88 \\
+C stocks & Fast & 1812.15 & 74.37 \\
+C stocks & Inter & 617.66 & 72.25 \\
+C stocks & Slow & 134.19 & 34.43 \\
+$\Delta^{14}\text{C}$ & Bulk & 48.84 & 3.64 \\
+$\Delta^{14}\text{C}$ & Fast & NA & 2.03 \\
+$\Delta^{14}\text{C}$ & Inter & NA & 15.1 \\
+$\Delta^{14}\text{C}$ & Slow & 189.63 & 7.48 \\
+\bottomhline
+\end{tabular}
+\end{table}
+\clearpage
+
+%%% TABLE 5
+\begin{table*}[t]
+\caption{Posterior estimates of modeled steady-state carbon fluxes among soil organic matter pools. Values represent the median flux and the 5th and 95th percentiles of the posterior distributions.}
+\begin{tabular}{llcc}
+\tophline
+Process & Flux & Median flux & 5--95\% percentile \\
+ & & \multicolumn{2}{c}{($\text{g}\,\text{C}\,\text{m}^{-2}\,\text{y}^{-1}$)} \\
+\middlehline
+Decomposition & Fast pool & 87.8 & 82.7--91.0 \\
+Decomposition & Intermediate pool & 10.8 & 8.6--13.0 \\
+Stabilization & Fast $\rightarrow$ intermediate pool & 14.7 & 13.0--15.8 \\
+Stabilization & Intermediate $\rightarrow$ slow pool & 0.862 & 0.0411--1.88 \\
+Respiration & Fast pool & 72.8 & 68.5--76.2 \\
+Respiration & Intermediate pool & 9.78 & 6.93--12.6 \\
+Respiration & Slow pool & 3.46 & 2.76--4.5 \\
+Export & Fast pool & 0.217 & 0.0206--0.71 \\
+Export & Intermediate pool & 0.0452 & 0.00303--0.108 \\
+\bottomhline
+\end{tabular}
+\end{table*}
+\clearpage
   
 %% FIGURES
 
-%%f
+%%fig 1
 %\begin{figure}[t]
 %\includegraphics[width=8.3cm]{FILE NAME}
 %\caption{TEXT}
 %\end{figure}
 
+%%fig 2
+%\begin{figure}[t]
+%\includegraphics[width=8.3cm]{FILE NAME}
+%\caption{TEXT}
+%\end{figure}
   
+%%fig 3
+%\begin{figure}[t]
+%\includegraphics[width=8.3cm]{FILE NAME}
+%\caption{TEXT}
+%\end{figure}
+
+%%fig 4
+%\begin{figure}[t]
+%\includegraphics[width=8.3cm]{FILE NAME}
+%\caption{TEXT}
+%\end{figure}
+  
+%%fig 5
+%\begin{figure}[t]
+%\includegraphics[width=8.3cm]{FILE NAME}
+%\caption{TEXT}
+%\end{figure}
+
 \bibliographystyle{copernicus}
 \bibliography{references.bib}
 
